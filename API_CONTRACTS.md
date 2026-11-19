@@ -15,6 +15,8 @@ public changes here first; do not silently change headers another module owns.
   `mixer::EffectType`; returns null for unsupported effects.
 - `auralis::mixer::SignalChain` — callback processing, bounded non-blocking
   command enqueue, and caller-owned snapshot copy.
+- `auralis::mixer::createSignalChain` — control-thread factory for the production
+  fixed-capacity signal-chain implementation.
 - `auralis::mixer::ChainCommand` — fixed-size trivially-copyable control
   operation. Queue full must be reported, not waited through.
 - `kMaximumEffectsPerChannel` — 16 for the MVP; effects beyond this are rejected.
@@ -39,6 +41,8 @@ state snapshots, and add/remove/move/enable/parameter operations. A successful
 control call means the command was accepted into the bounded queue, not that it
 has already been applied by the audio callback. Queue saturation returns
 `AURALIS_STATUS_QUEUE_FULL`.
+The effect wet/dry control is a separate normalized [0, 1] command. Parameter
+IDs are effect-specific and normalized values must be clamped/validated by DSP.
 
 API version starts at `1`; increment it only for incompatible ABI changes.
 

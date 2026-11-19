@@ -26,6 +26,9 @@ struct EffectSlot {
     std::uint32_t instanceId = 0;
     bool enabled = true;
     float wet = 1.0f;
+    std::uint32_t parameterCount = 0;
+    std::array<std::uint16_t, 16> parameterIds{};
+    std::array<float, 16> parameterValues{};
 };
 
 struct SignalChainSnapshot {
@@ -36,6 +39,7 @@ struct SignalChainSnapshot {
 enum class ChainCommandType : std::uint8_t {
     SetEnabled,
     SetParameter,
+    SetWet,
     Move,
     Add,
     Remove,

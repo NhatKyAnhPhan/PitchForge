@@ -125,6 +125,10 @@ AURALIS_API AuralisStatus auralis_engine_effect_set_enabled(
     AuralisEngine* engine,
     uint32_t instance_id,
     uint32_t enabled);
+AURALIS_API AuralisStatus auralis_engine_effect_set_wet(
+    AuralisEngine* engine,
+    uint32_t instance_id,
+    float wet);
 AURALIS_API AuralisStatus auralis_engine_effect_set_parameter(
     AuralisEngine* engine,
     uint32_t instance_id,
