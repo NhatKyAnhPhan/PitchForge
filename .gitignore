@@ -30,3 +30,7 @@ build/
 *.suo
 Thumbs.db
 .DS_Store
+
+# Python QA helpers
+__pycache__/
+*.py[cod]
