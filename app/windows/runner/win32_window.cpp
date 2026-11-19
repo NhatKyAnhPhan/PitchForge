@@ -37,10 +37,10 @@ int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
 }
 
-// Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
+// Looks up |EnableNonClientDpiScaling| in the loaded User32 module.
 // This API is only needed for PerMonitor V1 awareness mode.
 void EnableFullDpiSupportIfAvailable(HWND hwnd) {
-  HMODULE user32_module = LoadLibraryA("User32.dll");
+  HMODULE user32_module = GetModuleHandleW(L"user32.dll");
   if (!user32_module) {
     return;
   }
@@ -50,7 +50,6 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
   if (enable_non_client_dpi_scaling != nullptr) {
     enable_non_client_dpi_scaling(hwnd);
   }
-  FreeLibrary(user32_module);
 }
 
 }  // namespace
@@ -100,7 +99,10 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
     window_class.hbrBackground = 0;
     window_class.lpszMenuName = nullptr;
     window_class.lpfnWndProc = Win32Window::WndProc;
-    RegisterClass(&window_class);
+    if (!RegisterClass(&window_class) &&
+        GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
+      return nullptr;
+    }
     class_registered_ = true;
   }
   return kWindowClassName;
@@ -127,11 +129,17 @@ bool Win32Window::Create(const std::wstring& title,
 
   const wchar_t* window_class =
       WindowClassRegistrar::GetInstance()->GetWindowClass();
+  if (!window_class) {
+    return false;
+  }
 
   const POINT target_point = {static_cast<LONG>(origin.x),
                               static_cast<LONG>(origin.y)};
   HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
+  if (dpi == 0) {
+    dpi = 96;
+  }
   double scale_factor = dpi / 96.0;
 
   HWND window = CreateWindow(
