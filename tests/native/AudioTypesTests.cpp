@@ -1,6 +1,7 @@
 #include <auralis/audio/AudioTypes.h>
 #include <auralis/audio/AudioDeviceBackend.h>
 #include <auralis/dsp/ProcessorFactory.h>
+#include <auralis/dsp/ParameterIds.h>
 #include <auralis/bridge/auralis_c_api.h>
 #include <auralis/mixer/SignalChain.h>
 
@@ -26,6 +27,8 @@ int main() {
     static_assert(AURALIS_MAX_EFFECTS_PER_CHANNEL == 16);
     static_assert(auralis::audio::kDefaultAudioDevice
         == static_cast<std::uint32_t>(-1));
+    static_assert(static_cast<std::uint16_t>(
+        auralis::dsp::parameters::PitchCorrection::CustomScaleLastNote) == 43);
     assert(auralis::mixer::kMaximumEffectsPerChannel
         == AURALIS_MAX_EFFECTS_PER_CHANNEL);
 

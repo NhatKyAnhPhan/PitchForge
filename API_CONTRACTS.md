@@ -17,6 +17,8 @@ public changes here first; do not silently change headers another module owns.
   `process`, enabled state, and normalized parameter get/set methods.
 - `auralis::dsp::createProcessor` — control-thread factory keyed by
   `mixer::EffectType`; returns null for unsupported effects.
+- `auralis::dsp::parameters` — stable per-effect parameter IDs; C ABI values are
+  normalized to [0, 1], with parameter-specific conversion to display units.
 - `auralis::mixer::SignalChain` — callback processing, bounded non-blocking
   command enqueue, off-thread preparation, and caller-owned snapshot copy.
 - `auralis::mixer::createSignalChain` — control-thread factory for the production
@@ -47,6 +49,9 @@ has already been applied by the audio callback. Queue saturation returns
 `AURALIS_STATUS_QUEUE_FULL`.
 The effect wet/dry control is a separate normalized [0, 1] command. Parameter
 IDs are effect-specific and normalized values must be clamped/validated by DSP.
+Input gain, output gain, pan, and mute are separate engine controls and meter
+state is read-only. Solo requires multiple independently routable channels and
+is not exposed by the single-vocal-channel MVP contract.
 `SignalChain::prepare` is called on the control thread before a device stream is
 started. The MVP may preallocate one processor instance per effect type; effect
 insertion/removal/order changes are applied from the bounded command queue and

@@ -57,6 +57,13 @@ typedef struct AuralisMeters {
     double estimated_latency_ms;
 } AuralisMeters;
 
+typedef struct AuralisMixerState {
+    float input_gain_db;
+    float output_gain_db;
+    float pan;
+    uint32_t muted;
+} AuralisMixerState;
+
 typedef enum AuralisEffectType {
     AURALIS_EFFECT_NOISE_GATE = 0,
     AURALIS_EFFECT_EQUALIZER = 1,
@@ -100,6 +107,21 @@ AURALIS_API uint32_t auralis_engine_is_running(const AuralisEngine* engine);
 AURALIS_API AuralisStatus auralis_engine_get_meters(
     const AuralisEngine* engine,
     AuralisMeters* destination);
+AURALIS_API AuralisStatus auralis_engine_get_mixer_state(
+    const AuralisEngine* engine,
+    AuralisMixerState* destination);
+AURALIS_API AuralisStatus auralis_engine_set_input_gain(
+    AuralisEngine* engine,
+    float gain_db);
+AURALIS_API AuralisStatus auralis_engine_set_output_gain(
+    AuralisEngine* engine,
+    float gain_db);
+AURALIS_API AuralisStatus auralis_engine_set_pan(
+    AuralisEngine* engine,
+    float pan);
+AURALIS_API AuralisStatus auralis_engine_set_mute(
+    AuralisEngine* engine,
+    uint32_t muted);
 AURALIS_API uint32_t auralis_device_count(uint32_t for_input);
 AURALIS_API AuralisStatus auralis_device_get_info(
     uint32_t for_input,
