@@ -7,3 +7,5 @@
 - Pin JUCE 8.0.11 and establish Flutter + C++20/NDK as the cross-platform
   implementation direction.
 - Verify the native contract skeleton with Visual Studio 2026 and CTest (1/1).
+- Generate Android/Windows Flutter host scaffolding; pass starter widget test
+  and build the Windows Debug shell (native audio not integrated).

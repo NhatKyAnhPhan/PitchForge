@@ -1,7 +1,7 @@
 # Project Status
 
-**Milestone:** Repository and shared-contract bootstrap  
-**Date:** 2026-11-20  
+**Milestone:** Repository and shared-contract bootstrap
+**Date:** 2026-11-20
 **Overall:** Architecture/contracts complete; no feature should yet be
 described as complete.
 
@@ -18,6 +18,10 @@ described as complete.
   dependency on first configure.
 - No MCP resources are currently available.
 - Native contract smoke build passes with Visual Studio 2026; 1/1 CTest passed.
+- Flutter Android/Windows project skeleton generated; starter Flutter widget
+  test passes and a Windows Debug executable builds. The generated counter UI is
+  scaffolding only and is not a product feature.
+- Android debug APK build is currently running; result pending.
 
 ## Skills
 
@@ -42,10 +46,33 @@ described as complete.
 | Repository/environment survey | Complete |
 | Architecture and shared contracts | Complete; frozen for parallel module work |
 | Project skeleton smoke build | Complete (Windows configure/build + 1/1 CTest) |
-| Native audio + DSP + mixer | Not started |
-| Flutter UI | Not started |
-| Windows/Android platform hosts | Not started |
-| Integration and cross-platform QA | Not started |
+| Native audio + DSP + mixer | In parallel implementation |
+| Flutter UI | In parallel implementation |
+| Windows/Android platform hosts | In parallel implementation |
+| Integration and cross-platform QA | Pending module review |
+
+## Project task list
+
+- [x] Survey repository, skills, toolchains, and platform constraints.
+- [x] Establish architecture, module ownership, dependency graph, and C/C++
+  contracts.
+- [x] Create CMake + Flutter Windows/Android skeletons and baseline test plan.
+- [x] Verify native contract configure/build/test and Flutter Windows shell build.
+- [ ] Implement native engine lifecycle, device enumeration/selection, callback,
+  passthrough, clipping-safe meters, and latency reporting.
+- [ ] Implement/test DSP: EQ, gate, compressor, limiter, reverb, delay, tone and
+  realtime pitch detector/correction with key/scale/retune controls.
+- [ ] Implement/test editable signal chain, bounded command queue, routing,
+  bypass/wet-dry, and versioned preset save/load.
+- [ ] Implement responsive desktop/mobile mixer UI, device panel, meters,
+  effect controls, pitch display, accessible interactions, and preset browser.
+- [ ] Integrate Windows WASAPI host and produce a reproducible Windows build.
+- [ ] Integrate Android Oboe/AAudio plugin, permission/lifecycle/routing handling,
+  and build a debug APK.
+- [ ] Integrate all modules, review code, resolve API/build conflicts, and run
+  cross-module tests.
+- [ ] Validate audio on physical hardware, report latency/device limitations,
+  package builds, and prepare release notes.
 
 ## Blockers / limitations
 
