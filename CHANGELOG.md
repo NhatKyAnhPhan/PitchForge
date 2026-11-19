@@ -11,3 +11,5 @@
   and build the Windows Debug shell (native audio not integrated).
 - Build the Android Debug APK from the starter Flutter project and pass 2/2
   native contract tests, including C and C++ C-ABI header compilation.
+- Configure/fetch JUCE 8.0.11 successfully with Visual Studio CMake and build
+  the `juceaide` helper during configuration.

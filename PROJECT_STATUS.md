@@ -14,10 +14,13 @@ described as complete.
   Visual Studio CMake 4.3.1.
 - `flutter doctor -v` detects Visual Studio Community 2026 and Windows desktop
   support; Android licenses are not all accepted.
-- JUCE is not installed globally. CMake will fetch the pinned JUCE 8.0.11
-  dependency on first configure.
+- JUCE is not installed globally. CMake fetched/configured pinned JUCE 8.0.11
+  successfully with `AURALIS_FETCH_JUCE=ON`; its `juceaide` helper built during
+  configure. The application audio modules have not yet been compiled.
 - No MCP resources are currently available.
 - Native contract smoke build passes with Visual Studio 2026; 1/1 CTest passed.
+- JUCE dependency configure passed with Visual Studio CMake 4.3.1; `juceaide`
+  configured, built, and passed its setup check.
 - Flutter Android/Windows project skeleton generated; starter Flutter widget
   test passes and a Windows Debug executable builds. The generated counter UI is
   scaffolding only and is not a product feature.
@@ -64,6 +67,7 @@ described as complete.
 - [x] Create CMake + Flutter Windows/Android skeletons and baseline test plan.
 - [x] Verify native contract configure/build/test and Flutter Windows/Android
   shell builds.
+- [x] Verify pinned JUCE fetch and CMake setup (`juceaide`).
 - [ ] Implement native engine lifecycle, device enumeration/selection, callback,
   passthrough, clipping-safe meters, and latency reporting.
 - [ ] Implement/test DSP: EQ, gate, compressor, limiter, reverb, delay, tone and
@@ -97,8 +101,8 @@ must commit their scoped changes before code review/merge.
 
 ## Blockers / limitations
 
-- Contract smoke test is not the full JUCE audio engine build; the pinned JUCE
-  dependency has not yet been fetched or compiled.
+- Contract smoke test is not the full JUCE audio engine build; the JUCE modules
+  and application audio target have not yet been compiled.
 - Android SDK licenses need acceptance before claiming Android build readiness.
 - The Android APK test used the unmodified Flutter starter app; it proves
   packaging/toolchain only, not microphone access, audio I/O, or DSP.

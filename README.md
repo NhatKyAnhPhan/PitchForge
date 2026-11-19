@@ -35,6 +35,6 @@ and tests on the target platform.
 
 ## License
 
-Project licensing is not yet selected. JUCE is fetched at a pinned version and
-is available under GPLv3 or a commercial license. Confirm product distribution
-requirements before shipping a closed-source binary.
+Project licensing is not yet selected. JUCE 8.0.11 is fetched with
+`-DAURALIS_FETCH_JUCE=ON` and is available under GPLv3 or a commercial license.
+Confirm product distribution requirements before shipping a closed-source binary.
