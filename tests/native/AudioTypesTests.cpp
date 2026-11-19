@@ -31,6 +31,25 @@ int main() {
         auralis::dsp::parameters::PitchCorrection::CustomScaleLastNote) == 43);
     assert(auralis::mixer::kMaximumEffectsPerChannel
         == AURALIS_MAX_EFFECTS_PER_CHANNEL);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::NoiseGate) == AURALIS_EFFECT_NOISE_GATE);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::Equalizer) == AURALIS_EFFECT_EQUALIZER);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::DeEsser) == AURALIS_EFFECT_DE_ESSER);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::Compressor) == AURALIS_EFFECT_COMPRESSOR);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::PitchCorrection)
+        == AURALIS_EFFECT_PITCH_CORRECTION);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::Saturation) == AURALIS_EFFECT_SATURATION);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::Reverb) == AURALIS_EFFECT_REVERB);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::Delay) == AURALIS_EFFECT_DELAY);
+    static_assert(static_cast<std::uint32_t>(
+        auralis::mixer::EffectType::Limiter) == AURALIS_EFFECT_LIMITER);
 
     return 0;
 }

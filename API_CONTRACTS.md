@@ -51,7 +51,9 @@ The effect wet/dry control is a separate normalized [0, 1] command. Parameter
 IDs are effect-specific and normalized values must be clamped/validated by DSP.
 Input gain, output gain, pan, and mute are separate engine controls and meter
 state is read-only. Solo requires multiple independently routable channels and
-is not exposed by the single-vocal-channel MVP contract.
+is not exposed by the single-vocal-channel MVP contract. Gain values are in
+dB (input -60..+24, output -60..+12), pan is -1.0..+1.0, and mute is 0/1;
+non-finite/out-of-range values are rejected or safely clamped consistently.
 `SignalChain::prepare` is called on the control thread before a device stream is
 started. The MVP may preallocate one processor instance per effect type; effect
 insertion/removal/order changes are applied from the bounded command queue and
