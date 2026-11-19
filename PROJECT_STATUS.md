@@ -56,8 +56,10 @@ described as complete.
 | Project skeleton smoke build | Complete (Windows native 2/2 CTest; Flutter Windows and Android Debug builds) |
 | Native audio + DSP + mixer | In parallel implementation |
 | Flutter UI | In parallel implementation |
-| Windows/Android platform hosts | In parallel implementation |
-| Integration and cross-platform QA | Pending module review |
+| Windows runner/package host | Complete for Flutter shell; native DLL staging awaits engine |
+| Android native host | In parallel implementation |
+| QA harness/report | Complete for baseline/contracts; runtime integration awaits engine |
+| Integration and cross-platform QA | Pending native module review |
 
 ## Project task list
 
@@ -68,6 +70,8 @@ described as complete.
 - [x] Verify native contract configure/build/test and Flutter Windows/Android
   shell builds.
 - [x] Verify pinned JUCE fetch and CMake setup (`juceaide`).
+- [x] Harden Windows Flutter runner and verify shell release ZIP packaging.
+- [x] Add real-library C ABI QA harness and read-only mixer-header validation.
 - [ ] Implement native engine lifecycle, device enumeration/selection, callback,
   passthrough, clipping-safe meters, and latency reporting.
 - [ ] Implement/test DSP: EQ, gate, compressor, limiter, reverb, delay, tone and
@@ -92,17 +96,21 @@ described as complete.
 | DSP | `feature/dsp` | `C:\Users\admin\.local\share\opencode\worktree\global\dsp` | DSP algorithms + tests | In progress |
 | Mixer | `feature/mixer` | `C:\Users\admin\.local\share\opencode\worktree\global\mixer` | Signal chain + presets + tests | In progress |
 | UI/UX | `feature/ui` | `C:\Users\admin\.local\share\opencode\worktree\global\ui` | Flutter widgets/services/tests | In progress |
-| Windows | `feature/windows` | `C:\Users\admin\.local\share\opencode\worktree\global\windows` | Windows runner/package/docs | In progress |
+| Windows | `feature/windows` | `C:\Users\admin\.local\share\opencode\worktree\global\windows` | Windows runner/package/docs | Merged (`d5edd0f`); shell package tested |
 | Android | `feature/android` | `C:\Users\admin\.local\share\opencode\worktree\global\android` | Oboe/NDK host + Gradle/docs | In progress |
-| QA | `feature/qa` | `C:\Users\admin\.local\share\opencode\worktree\global\qa` | Integration tests/reports | In progress |
+| QA | `feature/qa` | `C:\Users\admin\.local\share\opencode\worktree\global\qa` | Integration tests/reports | Merged (`3dba2c4`); runtime blocked on engine |
 
 Shared public headers and CMake integration remain orchestrator-owned. Agents
-must commit their scoped changes before code review/merge.
+must commit their scoped changes before code review/merge. The remaining feature
+branches started from the frozen `e69b2aa` contract commit; additive C ABI and
+root CMake updates on `main` must be incorporated during final integration.
 
 ## Blockers / limitations
 
 - Contract smoke test is not the full JUCE audio engine build; the JUCE modules
   and application audio target have not yet been compiled.
+- Windows release ZIP was tested without an engine DLL and correctly warned that
+  it contains only the Flutter shell. DLL staging has not yet been exercised.
 - Android SDK licenses need acceptance before claiming Android build readiness.
 - The Android APK test used the unmodified Flutter starter app; it proves
   packaging/toolchain only, not microphone access, audio I/O, or DSP.

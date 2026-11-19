@@ -13,3 +13,7 @@
   native contract tests, including C and C++ C-ABI header compilation.
 - Configure/fetch JUCE 8.0.11 successfully with Visual Studio CMake and build
   the `juceaide` helper during configuration.
+- Harden the Windows Flutter runner and add tested release ZIP packaging with
+  explicit shell-only labeling when the native DLL is absent.
+- Add a real-library C ABI integration harness, mixer ABI declaration/layout
+  checks, and a baseline QA report; runtime behavior remains pending.
