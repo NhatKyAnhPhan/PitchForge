@@ -14,6 +14,12 @@ option(AURALIS_BUILD_TESTS "Build Auralis native unit tests" ON)
 option(AURALIS_FETCH_JUCE "Fetch the pinned JUCE dependency" OFF)
 
 if(AURALIS_FETCH_JUCE)
+    if(ANDROID)
+        message(FATAL_ERROR
+            "JUCE 8.0.11 does not support Android app targets through its official CMake API. "
+            "Build Android via Flutter/Gradle and platform/android with Oboe.")
+    endif()
+
     include(FetchContent)
     FetchContent_Declare(
         JUCE
