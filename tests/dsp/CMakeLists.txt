@@ -8,10 +8,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 enable_testing()
 
-add_subdirectory(
-    "${CMAKE_CURRENT_LIST_DIR}/../../native/src/dsp"
-    "${CMAKE_CURRENT_BINARY_DIR}/auralis_dsp"
-)
+if(NOT TARGET auralis_dsp)
+    add_subdirectory(
+        "${CMAKE_CURRENT_LIST_DIR}/../../native/src/dsp"
+        "${CMAKE_CURRENT_BINARY_DIR}/auralis_dsp"
+    )
+endif()
 
 add_executable(auralis_dsp_tests DspTests.cpp)
 target_link_libraries(auralis_dsp_tests PRIVATE auralis_dsp)

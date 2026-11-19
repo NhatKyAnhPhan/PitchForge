@@ -56,33 +56,12 @@ target_compile_definitions(
 )
 
 if(WIN32 AND TARGET juce::juce_audio_devices)
-    add_library(
-        auralis_audio_engine_windows_backend
-        OBJECT ../platform/windows/JuceAudioDeviceBackend.cpp
-    )
-    target_include_directories(
-        auralis_audio_engine_windows_backend
-        PRIVATE "${AURALIS_REPOSITORY_ROOT}/include"
-    )
-    target_compile_features(
-        auralis_audio_engine_windows_backend
-        PRIVATE cxx_std_20
-    )
-    target_compile_definitions(
-        auralis_audio_engine_windows_backend
-        PRIVATE JUCE_ASIO=0 JUCE_WASAPI=1
-    )
-    target_link_libraries(
-        auralis_audio_engine_windows_backend
-        PRIVATE juce::juce_audio_devices
-    )
-
     if(TARGET auralis_mixer AND TARGET auralis_dsp)
         add_library(
             auralis_audio_engine
             SHARED
-            $<TARGET_OBJECTS:auralis_audio_engine_common>
-            $<TARGET_OBJECTS:auralis_audio_engine_windows_backend>
+            AudioEngine.cpp
+            ../platform/windows/JuceAudioDeviceBackend.cpp
         )
         target_include_directories(
             auralis_audio_engine

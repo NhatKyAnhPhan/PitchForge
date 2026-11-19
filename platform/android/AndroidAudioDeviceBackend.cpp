@@ -166,14 +166,16 @@ public:
     [[nodiscard]] bool start(
         const AudioDeviceConfig& config,
         AudioDeviceCallback& callback) override {
-        if (!android::hasRecordPermission()
-            || !android::requestAudioFocus()
-            || !std::isfinite(config.processSpec.sampleRate)
+        if (!std::isfinite(config.processSpec.sampleRate)
             || config.processSpec.sampleRate < 8000.0
             || config.processSpec.sampleRate > 384000.0
             || config.processSpec.maximumBlockSize == 0
             || config.processSpec.channelCount == 0
             || config.processSpec.channelCount > kMaximumChannels) {
+            return false;
+        }
+        if (!android::hasRecordPermission()
+            || !android::requestAudioFocus()) {
             return false;
         }
 
@@ -192,6 +194,7 @@ public:
 
         std::lock_guard lock(lifecycleMutex_);
         closeStreams();
+        reconfigurePending_ = false;
         requestedConfig_ = config;
         requestedCallback_ = &callback;
         if (config.inputDeviceIndex != kDefaultAudioDevice) {
@@ -230,6 +233,7 @@ public:
         {
             std::lock_guard lock(lifecycleMutex_);
             closeStreams();
+            reconfigurePending_ = false;
             requestedCallback_ = nullptr;
         }
         android::abandonAudioFocus();
@@ -263,6 +267,9 @@ public:
                 selectedOutputDeviceId_ = descriptor.id;
                 selectedOutputDeviceChannels_ = descriptor.channelCount;
                 selectedOutputDeviceName_ = descriptor.name;
+            }
+            if (wasRunning) {
+                reconfigurePending_ = true;
             }
         }
         if (wasRunning) {
@@ -743,7 +750,9 @@ private:
                     closeStreams();
                 } else if (!hostAllowsAudio()) {
                     closeStreams();
-                } else if (!running_.load(std::memory_order_acquire)) {
+                } else if (reconfigurePending_
+                    || !running_.load(std::memory_order_acquire)) {
+                    reconfigurePending_ = false;
                     closeStreams();
                     if (!openAndStartStreams()) {
                         closeStreams();
@@ -778,6 +787,7 @@ private:
     std::uint32_t selectedOutputDeviceChannels_ = 0;
     std::string selectedInputDeviceName_;
     std::string selectedOutputDeviceName_;
+    bool reconfigurePending_ = false;
     std::uint32_t inputChannelCount_ = 1;
     std::uint32_t outputChannelCount_ = 2;
     StereoFrameRing inputRing_;

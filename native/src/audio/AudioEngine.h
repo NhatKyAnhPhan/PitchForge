@@ -65,7 +65,6 @@ private:
     std::mutex commandMutex_;
     std::array<std::atomic<std::uint32_t>, 8> meterValues_{};
     std::atomic<std::uint32_t> clipping_{0};
-    std::atomic<double> estimatedLatencyMs_{0.0};
     std::atomic<std::uint32_t> configuredInputChannels_{0};
     std::atomic<float> inputGainDb_{0.0f};
     std::atomic<float> outputGainDb_{0.0f};

@@ -197,7 +197,6 @@ bool AudioEngine::start(
 
     std::lock_guard lock(controlMutex_);
     backend_->stop();
-    estimatedLatencyMs_.store(0.0, std::memory_order_relaxed);
     configuredInputChannels_.store(inputChannelCount, std::memory_order_relaxed);
     {
         std::lock_guard commandLock(commandMutex_);
@@ -217,11 +216,8 @@ bool AudioEngine::start(
     }
 
     if (!backend_->start(selectedConfig, *this)) {
-        estimatedLatencyMs_.store(0.0, std::memory_order_relaxed);
         return false;
     }
-    estimatedLatencyMs_.store(
-        backend_->estimatedLatencyMs(), std::memory_order_relaxed);
     return true;
 }
 
@@ -229,7 +225,6 @@ void AudioEngine::stop() noexcept {
     try {
         std::lock_guard lock(controlMutex_);
         backend_->stop();
-        estimatedLatencyMs_.store(0.0, std::memory_order_relaxed);
     } catch (...) {
         // Destruction and stop are C ABI-safe even if a platform adapter fails.
     }
@@ -253,10 +248,6 @@ bool AudioEngine::selectDevice(bool forInput, std::uint32_t index) {
         return false;
     }
     (forInput ? inputDeviceIndex_ : outputDeviceIndex_) = index;
-    if (backend_->isRunning()) {
-        estimatedLatencyMs_.store(
-            backend_->estimatedLatencyMs(), std::memory_order_relaxed);
-    }
     return true;
 }
 
@@ -317,7 +308,9 @@ bool AudioEngine::copyMeters(
             meterValues_[index].load(std::memory_order_relaxed));
     }
     clipping = clipping_.load(std::memory_order_relaxed) != 0;
-    estimatedLatencyMs = estimatedLatencyMs_.load(std::memory_order_relaxed);
+    estimatedLatencyMs = backend_->isRunning()
+        ? backend_->estimatedLatencyMs()
+        : 0.0;
     return true;
 }
 
@@ -334,8 +327,8 @@ bool AudioEngine::copyChainSnapshot(
 
 bool AudioEngine::enqueue(const mixer::ChainCommand& command) noexcept {
     try {
-        std::unique_lock lock(commandMutex_, std::try_to_lock);
-        return lock.owns_lock() && signalChain_->enqueue(command);
+        std::lock_guard lock(commandMutex_);
+        return signalChain_->enqueue(command);
     } catch (...) {
         return false;
     }

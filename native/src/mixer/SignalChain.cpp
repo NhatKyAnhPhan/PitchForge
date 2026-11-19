@@ -153,33 +153,33 @@ struct AtomicEffectSlot {
 
     void store(const EffectSlot& source) noexcept {
         type.store(static_cast<std::uint8_t>(source.type),
-            std::memory_order_relaxed);
-        instanceId.store(source.instanceId, std::memory_order_relaxed);
-        enabled.store(source.enabled, std::memory_order_relaxed);
-        wet.store(source.wet, std::memory_order_relaxed);
-        parameterCount.store(source.parameterCount, std::memory_order_relaxed);
+            std::memory_order_seq_cst);
+        instanceId.store(source.instanceId, std::memory_order_seq_cst);
+        enabled.store(source.enabled, std::memory_order_seq_cst);
+        wet.store(source.wet, std::memory_order_seq_cst);
+        parameterCount.store(source.parameterCount, std::memory_order_seq_cst);
         for (std::size_t i = 0; i < kParameterCapacity; ++i) {
-            parameterIds[i].store(source.parameterIds[i],
-                std::memory_order_relaxed);
-            parameterValues[i].store(source.parameterValues[i],
-                std::memory_order_relaxed);
+            parameterIds[i].store(
+                source.parameterIds[i], std::memory_order_seq_cst);
+            parameterValues[i].store(
+                source.parameterValues[i], std::memory_order_seq_cst);
         }
     }
 
     [[nodiscard]] EffectSlot load() const noexcept {
         EffectSlot result;
         result.type = static_cast<EffectType>(
-            type.load(std::memory_order_relaxed));
-        result.instanceId = instanceId.load(std::memory_order_relaxed);
-        result.enabled = enabled.load(std::memory_order_relaxed);
-        result.wet = wet.load(std::memory_order_relaxed);
+            type.load(std::memory_order_seq_cst));
+        result.instanceId = instanceId.load(std::memory_order_seq_cst);
+        result.enabled = enabled.load(std::memory_order_seq_cst);
+        result.wet = wet.load(std::memory_order_seq_cst);
         result.parameterCount =
-            parameterCount.load(std::memory_order_relaxed);
+            parameterCount.load(std::memory_order_seq_cst);
         for (std::size_t i = 0; i < kParameterCapacity; ++i) {
             result.parameterIds[i] =
-                parameterIds[i].load(std::memory_order_relaxed);
+                parameterIds[i].load(std::memory_order_seq_cst);
             result.parameterValues[i] =
-                parameterValues[i].load(std::memory_order_relaxed);
+                parameterValues[i].load(std::memory_order_seq_cst);
         }
         return result;
     }
@@ -388,16 +388,16 @@ public:
     void copySnapshot(SignalChainSnapshot& destination) const noexcept override {
         for (;;) {
             const auto before =
-                snapshot_.sequence.load(std::memory_order_acquire);
+                snapshot_.sequence.load(std::memory_order_seq_cst);
             if ((before & 1u) != 0) {
                 continue;
             }
-            destination.size = snapshot_.size.load(std::memory_order_relaxed);
+            destination.size = snapshot_.size.load(std::memory_order_seq_cst);
             for (std::size_t i = 0; i < kMaximumEffectsPerChannel; ++i) {
                 destination.slots[i] = snapshot_.slots[i].load();
             }
             const auto after =
-                snapshot_.sequence.load(std::memory_order_acquire);
+                snapshot_.sequence.load(std::memory_order_seq_cst);
             if (before == after && (after & 1u) == 0) {
                 return;
             }
@@ -694,13 +694,13 @@ private:
     }
 
     void publishSnapshot() noexcept {
-        snapshot_.sequence.fetch_add(1, std::memory_order_acq_rel);
-        snapshot_.size.store(size_, std::memory_order_relaxed);
+        snapshot_.sequence.fetch_add(1, std::memory_order_seq_cst);
+        snapshot_.size.store(size_, std::memory_order_seq_cst);
         for (std::size_t i = 0; i < kMaximumEffectsPerChannel; ++i) {
             snapshot_.slots[i].store(
                 i < size_ ? slots_[i].state : EffectSlot{});
         }
-        snapshot_.sequence.fetch_add(1, std::memory_order_release);
+        snapshot_.sequence.fetch_add(1, std::memory_order_seq_cst);
     }
 
     BoundedQueue<ChainCommand> commands_;

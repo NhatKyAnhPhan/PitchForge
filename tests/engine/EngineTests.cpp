@@ -235,6 +235,10 @@ public:
         return 7.5;
     }
 
+    void simulateDeviceStop() noexcept {
+        running_ = false;
+    }
+
     void render(
         const float* const* inputs,
         std::uint32_t inputChannels,
@@ -488,6 +492,10 @@ int main() {
           "concurrent producers observe accepted and saturated updates");
     lastBackend->render(inputChannels, 2, outputChannels, 2, 4);
 
+    lastBackend->simulateDeviceStop();
+    check(auralis_engine_get_meters(engine, &meters) == AURALIS_STATUS_OK
+              && meters.estimated_latency_ms == 0.0,
+          "asynchronous device stop clears the reported latency");
     auralis_engine_stop(engine);
     check(auralis_engine_is_running(engine) == 0,
           "stop clears running state");

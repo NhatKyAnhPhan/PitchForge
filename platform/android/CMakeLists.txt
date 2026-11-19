@@ -20,25 +20,14 @@ add_subdirectory(
 add_library(auralis_audio_engine SHARED
     AndroidAudioDeviceBackend.cpp
     AndroidAudioHost.cpp
+    $<TARGET_OBJECTS:auralis_audio_engine_common>
 )
 
-get_target_property(AURALIS_CORE_TYPE auralis_core TYPE)
-get_target_property(AURALIS_CORE_SOURCES auralis_core INTERFACE_SOURCES)
-if(AURALIS_CORE_TYPE STREQUAL "INTERFACE_LIBRARY"
-    AND NOT AURALIS_CORE_SOURCES)
-    file(GLOB_RECURSE AURALIS_COMMON_SOURCES CONFIGURE_DEPENDS
-        "${AURALIS_ROOT}/native/src/*.c"
-        "${AURALIS_ROOT}/native/src/*.cc"
-        "${AURALIS_ROOT}/native/src/*.cpp"
-    )
-    list(FILTER AURALIS_COMMON_SOURCES EXCLUDE REGEX "/native/src/platform/")
-    if(AURALIS_COMMON_SOURCES)
-        target_sources(auralis_audio_engine PRIVATE ${AURALIS_COMMON_SOURCES})
-    else()
-        message(WARNING
-            "auralis_core is headers-only and native/src has no common engine "
-            "sources; libauralis_audio_engine.so will not export the shared C ABI")
-    endif()
+if(NOT TARGET auralis_audio_engine_common
+    OR NOT TARGET auralis_mixer
+    OR NOT TARGET auralis_dsp)
+    message(FATAL_ERROR
+        "The Android audio engine requires the common engine, mixer, and DSP targets.")
 endif()
 
 target_include_directories(auralis_audio_engine
@@ -61,6 +50,8 @@ target_compile_options(auralis_audio_engine PRIVATE
 target_link_libraries(auralis_audio_engine
     PRIVATE
         auralis_core
+        auralis_mixer
+        auralis_dsp
         oboe::oboe
         ${android-lib}
         ${log-lib}
