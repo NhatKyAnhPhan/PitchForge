@@ -25,6 +25,8 @@ described as complete.
   (native audio plug-in/DSP not integrated).
 - Updated native contract tests pass 2/2, including C ABI header compilation
   as both C and C++.
+- `flutter analyze` reports no issues in the starter app. `adb devices` finds
+  no physical/emulated Android device for audio smoke tests.
 
 ## Skills
 
