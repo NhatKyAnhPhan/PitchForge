@@ -57,6 +57,45 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# The native engine is built independently from the Flutter runner. When
+# available, provide its absolute path via the AURALIS_AUDIO_ENGINE_DLL
+# environment variable (or the matching CMake cache variable) and stage it
+# beside the executable for both local builds and release bundles.
+set(AURALIS_AUDIO_ENGINE_DLL "" CACHE FILEPATH
+  "Optional path to auralis_audio_engine.dll")
+if(DEFINED ENV{AURALIS_AUDIO_ENGINE_DLL} AND
+    NOT "$ENV{AURALIS_AUDIO_ENGINE_DLL}" STREQUAL "")
+  set(AURALIS_AUDIO_ENGINE_DLL "$ENV{AURALIS_AUDIO_ENGINE_DLL}" CACHE FILEPATH
+    "Optional path to auralis_audio_engine.dll" FORCE)
+endif()
+
+if(AURALIS_AUDIO_ENGINE_DLL)
+  get_filename_component(AURALIS_AUDIO_ENGINE_DLL
+    "${AURALIS_AUDIO_ENGINE_DLL}" REALPATH BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+  if(NOT EXISTS "${AURALIS_AUDIO_ENGINE_DLL}")
+    message(FATAL_ERROR
+      "AURALIS_AUDIO_ENGINE_DLL does not exist: ${AURALIS_AUDIO_ENGINE_DLL}")
+  endif()
+
+  get_filename_component(AURALIS_AUDIO_ENGINE_DLL_NAME
+    "${AURALIS_AUDIO_ENGINE_DLL}" NAME)
+  string(TOLOWER "${AURALIS_AUDIO_ENGINE_DLL_NAME}"
+    AURALIS_AUDIO_ENGINE_DLL_NAME_LOWER)
+  if(NOT AURALIS_AUDIO_ENGINE_DLL_NAME_LOWER STREQUAL
+      "auralis_audio_engine.dll")
+    message(FATAL_ERROR
+      "Expected auralis_audio_engine.dll, got: ${AURALIS_AUDIO_ENGINE_DLL_NAME}")
+  endif()
+
+  add_custom_target(auralis_stage_audio_engine ALL
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+      "${AURALIS_AUDIO_ENGINE_DLL}"
+      "$<TARGET_FILE_DIR:${BINARY_NAME}>/auralis_audio_engine.dll"
+    DEPENDS ${BINARY_NAME} "${AURALIS_AUDIO_ENGINE_DLL}"
+    COMMENT "Staging auralis_audio_engine.dll beside the Flutter runner"
+    VERBATIM)
+endif()
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
@@ -83,6 +122,12 @@ install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
 
 if(PLUGIN_BUNDLED_LIBRARIES)
   install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
+
+if(AURALIS_AUDIO_ENGINE_DLL)
+  install(FILES "${AURALIS_AUDIO_ENGINE_DLL}"
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
