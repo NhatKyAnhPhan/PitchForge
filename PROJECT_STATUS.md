@@ -78,6 +78,21 @@ described as complete.
 - [ ] Validate audio on physical hardware, report latency/device limitations,
   package builds, and prepare release notes.
 
+## Active worktrees
+
+| Agent | Branch | Worktree | Ownership | State |
+|---|---|---|---|---|
+| Audio Engine | `feature/engine` | `C:\Users\admin\.local\share\opencode\worktree\global\engine` | C API, common engine, Windows WASAPI adapter | In progress |
+| DSP | `feature/dsp` | `C:\Users\admin\.local\share\opencode\worktree\global\dsp` | DSP algorithms + tests | In progress |
+| Mixer | `feature/mixer` | `C:\Users\admin\.local\share\opencode\worktree\global\mixer` | Signal chain + presets + tests | In progress |
+| UI/UX | `feature/ui` | `C:\Users\admin\.local\share\opencode\worktree\global\ui` | Flutter widgets/services/tests | In progress |
+| Windows | `feature/windows` | `C:\Users\admin\.local\share\opencode\worktree\global\windows` | Windows runner/package/docs | In progress |
+| Android | `feature/android` | `C:\Users\admin\.local\share\opencode\worktree\global\android` | Oboe/NDK host + Gradle/docs | In progress |
+| QA | `feature/qa` | `C:\Users\admin\.local\share\opencode\worktree\global\qa` | Integration tests/reports | In progress |
+
+Shared public headers and CMake integration remain orchestrator-owned. Agents
+must commit their scoped changes before code review/merge.
+
 ## Blockers / limitations
 
 - Contract smoke test is not the full JUCE audio engine build; the pinned JUCE
