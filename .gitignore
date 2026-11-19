@@ -1,0 +1,32 @@
+# Local OpenCode skills/configuration are environment-specific.
+.opencode/
+
+# CMake and native builds
+build/
+cmake-build-*/
+out/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.so
+*.pdb
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.flutter-plugins*
+build/
+
+# IDE and OS files
+.idea/
+.vscode/
+.vs/
+*.user
+*.suo
+Thumbs.db
+.DS_Store
