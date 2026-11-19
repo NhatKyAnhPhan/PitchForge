@@ -1,4 +1,5 @@
 #include <auralis/audio/AudioTypes.h>
+#include <auralis/audio/AudioDeviceBackend.h>
 #include <auralis/dsp/ProcessorFactory.h>
 #include <auralis/bridge/auralis_c_api.h>
 #include <auralis/mixer/SignalChain.h>
@@ -23,6 +24,8 @@ int main() {
 
     static_assert(std::is_trivially_copyable_v<auralis::mixer::ChainCommand>);
     static_assert(AURALIS_MAX_EFFECTS_PER_CHANNEL == 16);
+    static_assert(auralis::audio::kDefaultAudioDevice
+        == static_cast<std::uint32_t>(-1));
     assert(auralis::mixer::kMaximumEffectsPerChannel
         == AURALIS_MAX_EFFECTS_PER_CHANNEL);
 

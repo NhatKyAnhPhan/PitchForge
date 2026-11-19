@@ -60,6 +60,9 @@ class SignalChain {
 public:
     virtual ~SignalChain() = default;
 
+    // Prepare all processor storage off the realtime thread before audio starts.
+    virtual void prepare(const audio::ProcessSpec& spec) = 0;
+
     // Called from the audio callback; must be allocation-free and non-blocking.
     virtual void process(audio::AudioBlockView block) noexcept = 0;
 

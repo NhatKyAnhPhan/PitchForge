@@ -9,12 +9,16 @@ public changes here first; do not silently change headers another module owns.
   count.
 - `auralis::audio::AudioBlockView` — non-owning planar float block, valid only
   during the current callback.
+- `auralis::audio::AudioDeviceBackend` — platform-owned device enumeration,
+  selection, lifecycle, latency estimate, and planar float callback contract.
+- `auralis::audio::AudioDeviceCallback` — non-blocking realtime input/output
+  callback used by the engine and platform adapters.
 - `auralis::dsp::AudioProcessor` — off-thread `prepare`, `reset`, callback
   `process`, enabled state, and normalized parameter get/set methods.
 - `auralis::dsp::createProcessor` — control-thread factory keyed by
   `mixer::EffectType`; returns null for unsupported effects.
 - `auralis::mixer::SignalChain` — callback processing, bounded non-blocking
-  command enqueue, and caller-owned snapshot copy.
+  command enqueue, off-thread preparation, and caller-owned snapshot copy.
 - `auralis::mixer::createSignalChain` — control-thread factory for the production
   fixed-capacity signal-chain implementation.
 - `auralis::mixer::ChainCommand` — fixed-size trivially-copyable control
@@ -43,6 +47,10 @@ has already been applied by the audio callback. Queue saturation returns
 `AURALIS_STATUS_QUEUE_FULL`.
 The effect wet/dry control is a separate normalized [0, 1] command. Parameter
 IDs are effect-specific and normalized values must be clamped/validated by DSP.
+`SignalChain::prepare` is called on the control thread before a device stream is
+started. The MVP may preallocate one processor instance per effect type; effect
+insertion/removal/order changes are applied from the bounded command queue and
+must not allocate on the audio thread.
 
 API version starts at `1`; increment it only for incompatible ABI changes.
 
