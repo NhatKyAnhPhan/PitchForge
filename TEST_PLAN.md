@@ -24,18 +24,34 @@
 
 ## Platform and integration
 
+- The mixer ABI declaration/layout check is read-only and can run without an
+  engine, using the updated header:
+
+  ```powershell
+  .\scripts\qa\run_c_api_integration.ps1 -HeaderOnly `
+    -Header C:\opencode\include\auralis\bridge\auralis_c_api.h
+  ```
+
+  This checks `AuralisMixerState` field order/types/ctypes offsets and the
+  getter/setter declarations. It does not establish that symbols are exported
+  or that calls behave correctly.
 - After engine integration, run the real-library C ABI suite (never a mock):
 
   ```powershell
   .\scripts\qa\run_c_api_integration.ps1 -Library path\to\auralis_engine.dll
   ```
 
-  This performs ABI layout, API version, null-pointer/index, and real device
-  enumeration checks. It exits `2` and labels the run **BLOCKED** unless live
-  audio is explicitly requested; it does not call a contract-only build a full
-  integration pass. With a device, exercise chain/parameter operations and
-  concurrent command stress using the equalizer gain parameter
-  (`Equalizer::Gain`, ID 1) from `include/auralis/dsp/ParameterIds.h`:
+  This binds and validates the mixer exports and checks ABI layout,
+  API version, null pointers/indices, and device enumeration. It exits `2` and
+  labels live behavior **BLOCKED** unless audio is explicitly requested; it does
+  not call a contract-only build a full integration pass. With a device, it
+  exercises mixer get/set, finite/out-of-range gain and pan policies, mute
+  validation, chain/parameter operations, and concurrent command stress. Gain
+  bounds are input -60..+24 dB, output -60..+12 dB; pan is -1..+1; mute is 0/1.
+  Out-of-range setters may reject without changing state or clamp to the bound;
+  any accepted non-finite value must leave a finite, in-range state. Chain
+  parameter stress uses `Equalizer::Gain`, ID 1 from
+  `include/auralis/dsp/ParameterIds.h`:
 
   ```powershell
   .\scripts\qa\run_c_api_integration.ps1 -Library path\to\auralis_engine.dll `
@@ -47,10 +63,10 @@
   Override `-ParameterEffect` and `-ParameterId` only with a supported pair
   from that catalog; pass device indices where the default devices are unsuitable.
   The stress latency numbers are control-call timings, not callback duration or
-  physical audio latency. Preset round-trip remains blocked until a preset API is
-  exposed. Mixer-state/gain/pan/mute integration assertions are pending until
-  their implementation is integrated into this worktree; do not infer behavior
-  from header declarations alone.
+  physical audio latency. Mixer declaration/layout checks can run now, but
+  export binding, null-pointer behavior, and live mixer semantics remain pending
+  until the engine implementation is integrated. Preset round-trip remains
+  blocked until a preset API is exposed.
 - Windows: WASAPI shared/exclusive where supported, input/output selection,
   device unplug/replug, sample-rate/buffer changes, startup/shutdown and mute.
 - Android: permission denial/grant, foreground/background, audio focus,

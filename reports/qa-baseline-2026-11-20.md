@@ -26,19 +26,33 @@
 The native target is still `auralis_core INTERFACE`; this baseline does not
 exercise an engine implementation, live DSP, or device callback.
 
+## Mixer ABI follow-up
+
+- Read-only header check against main commit `6ec1cc5`'s
+  `include/auralis/bridge/auralis_c_api.h`: PASS. The mixer state has four
+  fields at ctypes offsets 0/4/8/12 and size 16 bytes; all five mixer getter /
+  setter declarations match the expected signatures.
+- The check used the supplied `C:\opencode\include` copy; public headers in this
+  QA worktree were not changed.
+- The real-library harness now requires those exports and includes null-pointer
+  checks plus opt-in live set/get and range-policy checks for gain, pan, and
+  mute. These runtime checks are **PENDING**: no implementation/shared library
+  is present in this worktree, so no behavior is claimed.
+
 ## Integration gaps / blockers
 
 - No Auralis engine shared library or implementation is present in this worktree.
-  Consequently C ABI calls, chain/parameter queue behavior, callback stress and
-  callback timing/allocation/underrun measurements were not run.
+  Consequently C ABI runtime calls, mixer/chain/parameter queue behavior,
+  callback stress and callback timing/allocation/underrun measurements were not
+  run.
 - Physical Windows audio operation was not exercised. A Windows endpoint being
   installed is not evidence that Auralis audio works.
 - No Android device is attached and Android licenses remain outstanding; Android
   permission, routing, lifecycle, and audible-output checks are unavailable.
 - Read-only review of main commit `6ec1cc5`'s headers identified mixer-state,
   input/output gain, pan, and mute additions. Their integration assertions are
-  intentionally deferred until the implementation is integrated into this
-  worktree; declarations alone are not tested as behavior.
+  now present but remain pending until the implementation is integrated into
+  this worktree; declarations alone are not treated as behavior.
 - The current C ABI exposes no preset save/load entry points, so transactional
   preset round-trip coverage remains blocked.
 - `tests/integration/c_api_integration.py` reports control-call stress latency,

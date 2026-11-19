@@ -1,6 +1,8 @@
 param(
-    [Parameter(Mandatory = $true)]
     [string]$Library,
+
+    [switch]$HeaderOnly,
+    [string]$Header,
 
     [switch]$Audio,
 
@@ -24,26 +26,52 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$libraryInput = if ([IO.Path]::IsPathRooted($Library)) {
-    $Library
-} else {
-    Join-Path $repoRoot $Library
-}
-$libraryPath = (Resolve-Path $libraryInput -ErrorAction Stop).Path
 $pythonCommand = Get-Command python -ErrorAction Stop
 $runner = Join-Path $repoRoot 'tests\integration\c_api_integration.py'
 
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     throw "Integration runner not found: $runner"
 }
-if (-not [IO.Path]::IsPathRooted($libraryPath)) {
-    throw "Library path must resolve to an existing real engine library: $Library"
-}
 if ($SampleRate -le 0) {
     throw 'SampleRate must be positive.'
 }
 
-$testArgs = @('--library', $libraryPath)
+$testArgs = @()
+if ($HeaderOnly) {
+    if ([string]::IsNullOrWhiteSpace($Header)) {
+        throw '-HeaderOnly requires -Header.'
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Library)) {
+        throw '-Library cannot be used with -HeaderOnly.'
+    }
+    $headerInput = if ([IO.Path]::IsPathRooted($Header)) {
+        $Header
+    } else {
+        Join-Path $repoRoot $Header
+    }
+    $headerPath = (Resolve-Path $headerInput -ErrorAction Stop).Path
+    $testArgs += @('--header-only', '--header', $headerPath)
+} else {
+    if ([string]::IsNullOrWhiteSpace($Library)) {
+        throw '-Library is required unless -HeaderOnly is selected.'
+    }
+    $libraryInput = if ([IO.Path]::IsPathRooted($Library)) {
+        $Library
+    } else {
+        Join-Path $repoRoot $Library
+    }
+    $libraryPath = (Resolve-Path $libraryInput -ErrorAction Stop).Path
+    $testArgs += @('--library', $libraryPath)
+    if (-not [string]::IsNullOrWhiteSpace($Header)) {
+        $headerInput = if ([IO.Path]::IsPathRooted($Header)) {
+            $Header
+        } else {
+            Join-Path $repoRoot $Header
+        }
+        $headerPath = (Resolve-Path $headerInput -ErrorAction Stop).Path
+        $testArgs += @('--header', $headerPath)
+    }
+}
 if ($Audio) {
     $testArgs += @(
         '--audio',

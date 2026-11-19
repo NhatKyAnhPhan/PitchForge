@@ -9,6 +9,7 @@ import json
 import math
 import os
 import platform
+import re
 import statistics
 import sys
 import threading
@@ -22,6 +23,11 @@ STATUS_INVALID_ARGUMENT = 1
 STATUS_QUEUE_FULL = 4
 MAX_EFFECTS = 16
 MAX_PARAMETERS = 16
+MIXER_FIELD_LIMITS = {
+    "input_gain_db": (-60.0, 24.0),
+    "output_gain_db": (-60.0, 12.0),
+    "pan": (-1.0, 1.0),
+}
 EFFECT_NAMES = (
     "noise_gate",
     "equalizer",
@@ -71,6 +77,15 @@ class Meters(ctypes.Structure):
     ]
 
 
+class MixerState(ctypes.Structure):
+    _fields_ = [
+        ("input_gain_db", ctypes.c_float),
+        ("output_gain_db", ctypes.c_float),
+        ("pan", ctypes.c_float),
+        ("muted", ctypes.c_uint32),
+    ]
+
+
 class EffectState(ctypes.Structure):
     _fields_ = [
         ("instance_id", ctypes.c_uint32),
@@ -101,6 +116,11 @@ class NativeApi:
         "auralis_engine_stop",
         "auralis_engine_is_running",
         "auralis_engine_get_meters",
+        "auralis_engine_get_mixer_state",
+        "auralis_engine_set_input_gain",
+        "auralis_engine_set_output_gain",
+        "auralis_engine_set_pan",
+        "auralis_engine_set_mute",
         "auralis_device_count",
         "auralis_device_get_info",
         "auralis_engine_select_device",
@@ -150,6 +170,31 @@ class NativeApi:
         self.engine_get_meters = self._bind(
             "auralis_engine_get_meters",
             [ctypes.c_void_p, ctypes.POINTER(Meters)],
+            ctypes.c_int,
+        )
+        self.engine_get_mixer_state = self._bind(
+            "auralis_engine_get_mixer_state",
+            [ctypes.c_void_p, ctypes.POINTER(MixerState)],
+            ctypes.c_int,
+        )
+        self.engine_set_input_gain = self._bind(
+            "auralis_engine_set_input_gain",
+            [ctypes.c_void_p, ctypes.c_float],
+            ctypes.c_int,
+        )
+        self.engine_set_output_gain = self._bind(
+            "auralis_engine_set_output_gain",
+            [ctypes.c_void_p, ctypes.c_float],
+            ctypes.c_int,
+        )
+        self.engine_set_pan = self._bind(
+            "auralis_engine_set_pan",
+            [ctypes.c_void_p, ctypes.c_float],
+            ctypes.c_int,
+        )
+        self.engine_set_mute = self._bind(
+            "auralis_engine_set_mute",
+            [ctypes.c_void_p, ctypes.c_uint32],
             ctypes.c_int,
         )
         self.device_count = self._bind(
@@ -225,6 +270,7 @@ def check_abi_layout() -> dict[str, int]:
         "AuralisAudioConfig": 24,
         "AuralisDeviceInfo": 208,
         "AuralisMeters": 48,
+        "AuralisMixerState": 16,
         "AuralisEffectState": 116,
         "AuralisChainState": 1860,
     }
@@ -232,6 +278,7 @@ def check_abi_layout() -> dict[str, int]:
         "AuralisAudioConfig": ctypes.sizeof(AudioConfig),
         "AuralisDeviceInfo": ctypes.sizeof(DeviceInfo),
         "AuralisMeters": ctypes.sizeof(Meters),
+        "AuralisMixerState": ctypes.sizeof(MixerState),
         "AuralisEffectState": ctypes.sizeof(EffectState),
         "AuralisChainState": ctypes.sizeof(ChainState),
     }
@@ -240,6 +287,78 @@ def check_abi_layout() -> dict[str, int]:
         f"C ABI struct sizes differ: expected {expected_sizes}, got {actual_sizes}",
     )
     return actual_sizes
+
+
+def check_mixer_state_offsets() -> dict[str, int]:
+    expected_offsets = {
+        "input_gain_db": 0,
+        "output_gain_db": 4,
+        "pan": 8,
+        "muted": 12,
+    }
+    actual_offsets = {
+        field: getattr(MixerState, field).offset for field in expected_offsets
+    }
+    require(
+        actual_offsets == expected_offsets,
+        f"AuralisMixerState field offsets differ: expected {expected_offsets}, "
+        f"got {actual_offsets}",
+    )
+    return actual_offsets
+
+
+def check_header_contract(header_path: Path) -> dict[str, object]:
+    if not header_path.is_file():
+        raise FileNotFoundError(f"C API header not found: {header_path}")
+    source = header_path.read_text(encoding="utf-8")
+    mixer_struct = re.search(
+        r"typedef\s+struct\s+AuralisMixerState\s*\{([^}]*)\}\s*AuralisMixerState\s*;",
+        source,
+        flags=re.DOTALL,
+    )
+    require(mixer_struct is not None, "AuralisMixerState declaration is missing")
+    fields = re.findall(r"\b([A-Za-z_]\w*)\s+([A-Za-z_]\w*)\s*;", mixer_struct.group(1))
+    expected_fields = [
+        ("float", "input_gain_db"),
+        ("float", "output_gain_db"),
+        ("float", "pan"),
+        ("uint32_t", "muted"),
+    ]
+    require(
+        fields == expected_fields,
+        f"AuralisMixerState fields differ: expected {expected_fields}, got {fields}",
+    )
+
+    declarations = {
+        "auralis_engine_get_mixer_state": (
+            r"AURALIS_API\s+AuralisStatus\s+auralis_engine_get_mixer_state\s*"
+            r"\(\s*const\s+AuralisEngine\s*\*\s*engine\s*,\s*"
+            r"AuralisMixerState\s*\*\s*destination\s*\)\s*;"
+        ),
+        "auralis_engine_set_input_gain": (
+            r"AURALIS_API\s+AuralisStatus\s+auralis_engine_set_input_gain\s*"
+            r"\(\s*AuralisEngine\s*\*\s*engine\s*,\s*float\s+gain_db\s*\)\s*;"
+        ),
+        "auralis_engine_set_output_gain": (
+            r"AURALIS_API\s+AuralisStatus\s+auralis_engine_set_output_gain\s*"
+            r"\(\s*AuralisEngine\s*\*\s*engine\s*,\s*float\s+gain_db\s*\)\s*;"
+        ),
+        "auralis_engine_set_pan": (
+            r"AURALIS_API\s+AuralisStatus\s+auralis_engine_set_pan\s*"
+            r"\(\s*AuralisEngine\s*\*\s*engine\s*,\s*float\s+pan\s*\)\s*;"
+        ),
+        "auralis_engine_set_mute": (
+            r"AURALIS_API\s+AuralisStatus\s+auralis_engine_set_mute\s*"
+            r"\(\s*AuralisEngine\s*\*\s*engine\s*,\s*uint32_t\s+muted\s*\)\s*;"
+        ),
+    }
+    missing = [
+        name
+        for name, declaration in declarations.items()
+        if re.search(declaration, source, flags=re.DOTALL) is None
+    ]
+    require(not missing, f"mixer C ABI declarations are missing/mismatched: {missing}")
+    return {"mixer_state_fields": fields, "exports": list(declarations)}
 
 
 def check_api_version(api: NativeApi) -> int:
@@ -252,7 +371,7 @@ def check_null_validation(api: NativeApi) -> None:
     config = AudioConfig(48000.0, 256, 1, 2)
     meters = Meters()
     chain = ChainState()
-    device = DeviceInfo()
+    mixer_state = MixerState()
     engine = api.engine_create()
     require(bool(engine), "engine_create returned a null handle")
     try:
@@ -261,6 +380,14 @@ def check_null_validation(api: NativeApi) -> None:
             "start(null config)": api.engine_start(engine, None),
             "meters(null engine)": api.engine_get_meters(None, ctypes.byref(meters)),
             "meters(null destination)": api.engine_get_meters(engine, None),
+            "mixer state(null engine)": api.engine_get_mixer_state(
+                None, ctypes.byref(mixer_state)
+            ),
+            "mixer state(null destination)": api.engine_get_mixer_state(engine, None),
+            "set input gain(null engine)": api.engine_set_input_gain(None, 0.0),
+            "set output gain(null engine)": api.engine_set_output_gain(None, 0.0),
+            "set pan(null engine)": api.engine_set_pan(None, 0.0),
+            "set mute(null engine)": api.engine_set_mute(None, 0),
             "device info(null destination)": api.device_get_info(
                 0, 0, None
             ),
@@ -316,6 +443,201 @@ def check_device_enumeration(api: NativeApi) -> dict[str, int]:
             f"out-of-range {label} device index returned status {status}",
         )
     return counts
+
+
+def read_mixer_state(api: NativeApi, engine: int) -> MixerState:
+    state = MixerState()
+    status = api.engine_get_mixer_state(engine, ctypes.byref(state))
+    require(status == STATUS_OK, f"mixer-state snapshot returned status {status}")
+    values = {
+        "input_gain_db": state.input_gain_db,
+        "output_gain_db": state.output_gain_db,
+        "pan": state.pan,
+    }
+    for field, value in values.items():
+        low, high = MIXER_FIELD_LIMITS[field]
+        require(math.isfinite(value), f"mixer state {field} is non-finite")
+        require(
+            low - 1e-4 <= value <= high + 1e-4,
+            f"mixer state {field}={value} is outside [{low}, {high}]",
+        )
+    require(state.muted in (0, 1), f"mixer state mute flag is not boolean: {state.muted}")
+    return state
+
+
+def mixer_field_matches(state: MixerState, expected: dict[str, float | int]) -> bool:
+    for field, value in expected.items():
+        actual = getattr(state, field)
+        if field == "muted":
+            if actual != value:
+                return False
+        elif abs(actual - float(value)) > 1e-4:
+            return False
+    return True
+
+
+def wait_mixer_fields(
+    api: NativeApi, engine: int, expected: dict[str, float | int], message: str
+) -> MixerState:
+    latest: MixerState | None = None
+
+    def matches() -> bool:
+        nonlocal latest
+        latest = read_mixer_state(api, engine)
+        return mixer_field_matches(latest, expected)
+
+    wait_until(matches, message)
+    require(latest is not None, f"mixer state unavailable while waiting for {message}")
+    return latest
+
+
+def set_mixer_value(
+    api: NativeApi,
+    engine: int,
+    setter: object,
+    field: str,
+    value: float | int,
+) -> None:
+    status = setter(engine, value)
+    require(status == STATUS_OK, f"set mixer {field}={value} returned status {status}")
+    wait_mixer_fields(api, engine, {field: value}, f"mixer {field}={value}")
+
+
+def probe_mixer_range(
+    api: NativeApi,
+    engine: int,
+    setter: object,
+    field: str,
+    probe: float,
+    clamped_value: float,
+) -> str:
+    before = read_mixer_state(api, engine)
+    before_value = float(getattr(before, field))
+    status = setter(engine, probe)
+    require(
+        status in (STATUS_OK, STATUS_INVALID_ARGUMENT),
+        f"out-of-range {field}={probe} returned unexpected status {status}",
+    )
+    if status == STATUS_INVALID_ARGUMENT:
+        wait_mixer_fields(
+            api, engine, {field: before_value}, f"rejected {field} unchanged"
+        )
+        return "rejected"
+    wait_mixer_fields(
+        api, engine, {field: clamped_value}, f"clamped {field}={clamped_value}"
+    )
+    return "clamped"
+
+
+def probe_nonfinite_mixer_value(
+    api: NativeApi, engine: int, setter: object, field: str, probe: float
+) -> str:
+    before = read_mixer_state(api, engine)
+    before_value = float(getattr(before, field))
+    status = setter(engine, probe)
+    require(
+        status in (STATUS_OK, STATUS_INVALID_ARGUMENT),
+        f"non-finite {field}={probe} returned unexpected status {status}",
+    )
+    if status == STATUS_INVALID_ARGUMENT:
+        wait_mixer_fields(
+            api, engine, {field: before_value}, f"rejected non-finite {field}"
+        )
+        return "rejected"
+
+    # An accepted non-finite value must still publish a finite, in-range state.
+    for _ in range(20):
+        read_mixer_state(api, engine)
+        time.sleep(0.01)
+    return "safely handled"
+
+
+def check_live_mixer_controls(api: NativeApi, engine: int) -> dict[str, object]:
+    initial = read_mixer_state(api, engine)
+    initial_values = {
+        "input_gain_db": float(initial.input_gain_db),
+        "output_gain_db": float(initial.output_gain_db),
+        "pan": float(initial.pan),
+        "muted": int(initial.muted),
+    }
+
+    # Mute first and keep the stream muted during range probes and chain stress.
+    set_mixer_value(api, engine, api.engine_set_mute, "muted", 1)
+    set_mixer_value(api, engine, api.engine_set_output_gain, "output_gain_db", -12.0)
+    set_mixer_value(api, engine, api.engine_set_input_gain, "input_gain_db", -6.0)
+    set_mixer_value(api, engine, api.engine_set_pan, "pan", 0.25)
+
+    range_probes: dict[str, list[str]] = {}
+    range_cases = (
+        (
+            "input_gain_db",
+            api.engine_set_input_gain,
+            ((25.0, 24.0), (-61.0, -60.0)),
+        ),
+        (
+            "output_gain_db",
+            api.engine_set_output_gain,
+            ((13.0, 12.0), (-61.0, -60.0)),
+        ),
+        ("pan", api.engine_set_pan, ((1.1, 1.0), (-1.1, -1.0))),
+    )
+    for field, setter, cases in range_cases:
+        outcomes = [
+            probe_mixer_range(api, engine, setter, field, probe, clamped)
+            for probe, clamped in cases
+        ]
+        require(
+            len(set(outcomes)) == 1,
+            f"{field} applies inconsistent out-of-range policy: {outcomes}",
+        )
+        range_probes[field] = outcomes
+
+    nonfinite_probes: dict[str, list[str]] = {}
+    for field, setter in (
+        ("input_gain_db", api.engine_set_input_gain),
+        ("output_gain_db", api.engine_set_output_gain),
+        ("pan", api.engine_set_pan),
+    ):
+        outcomes = [
+            probe_nonfinite_mixer_value(api, engine, setter, field, value)
+            for value in (float("nan"), float("inf"), float("-inf"))
+        ]
+        require(
+            len(set(outcomes)) == 1,
+            f"{field} applies inconsistent non-finite policy: {outcomes}",
+        )
+        nonfinite_probes[field] = outcomes
+
+    set_mixer_value(api, engine, api.engine_set_output_gain, "output_gain_db", -12.0)
+    set_mixer_value(api, engine, api.engine_set_input_gain, "input_gain_db", -6.0)
+    set_mixer_value(api, engine, api.engine_set_pan, "pan", 0.25)
+    # Mute is an integer boolean: either reject 2 without changing state, or
+    # normalize it to 1. Test both ordinary states before the invalid probe.
+    set_mixer_value(api, engine, api.engine_set_mute, "muted", 0)
+    mute_before = read_mixer_state(api, engine)
+    mute_status = api.engine_set_mute(engine, 2)
+    require(
+        mute_status in (STATUS_OK, STATUS_INVALID_ARGUMENT),
+        f"set mute=2 returned unexpected status {mute_status}",
+    )
+    expected_mute = 1 if mute_status == STATUS_OK else int(mute_before.muted)
+    wait_mixer_fields(api, engine, {"muted": expected_mute}, "mute clamp/rejection")
+    set_mixer_value(api, engine, api.engine_set_mute, "muted", 1)
+
+    # Restore the newly-created engine's levels but leave it muted until shutdown.
+    for field, setter in (
+        ("input_gain_db", api.engine_set_input_gain),
+        ("output_gain_db", api.engine_set_output_gain),
+        ("pan", api.engine_set_pan),
+    ):
+        set_mixer_value(api, engine, setter, field, initial_values[field])
+    return {
+        "initial_state": initial_values,
+        "finite_out_of_range_policy": range_probes,
+        "nonfinite_input_policy": nonfinite_probes,
+        "mute_2_policy": "clamped" if mute_status == STATUS_OK else "rejected",
+        "left_muted_until_shutdown": True,
+    }
 
 
 def snapshot(api: NativeApi, engine: int) -> list[EffectState]:
@@ -384,6 +706,7 @@ def check_audio_chain_and_stress(api: NativeApi, args: argparse.Namespace) -> di
         require(status == STATUS_OK, f"engine_start returned status {status}")
         require(api.engine_is_running(engine) == 1, "engine did not enter running state")
 
+        metrics["mixer_controls"] = check_live_mixer_controls(api, engine)
         meters = Meters()
         status = api.engine_get_meters(engine, ctypes.byref(meters))
         require(status == STATUS_OK, f"meter snapshot returned status {status}")
@@ -535,14 +858,24 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Run C ABI checks against a real built Auralis library. Live chain "
-            "and callback stress require explicit --audio opt-in."
+            "and callback stress require explicit --audio opt-in. Use "
+            "--header-only for read-only contract checks without an engine."
         )
     )
     parser.add_argument(
         "--library",
         type=Path,
-        required=True,
         help="path to the real engine DLL/shared library (no mock fallback)",
+    )
+    parser.add_argument(
+        "--header",
+        type=Path,
+        help="optional C API header to check against the mixer ABI contract",
+    )
+    parser.add_argument(
+        "--header-only",
+        action="store_true",
+        help="check ctypes layout and declarations without loading an engine",
     )
     parser.add_argument(
         "--audio",
@@ -578,6 +911,15 @@ def parse_args() -> argparse.Namespace:
         help="optional destination for machine-readable results",
     )
     args = parser.parse_args()
+    if args.header_only:
+        if args.header is None:
+            parser.error("--header-only requires --header")
+        if args.library is not None:
+            parser.error("--header-only cannot be combined with --library")
+        if args.audio:
+            parser.error("--header-only cannot be combined with --audio")
+    elif args.library is None:
+        parser.error("--library is required unless --header-only is selected")
     if args.audio:
         if (
             args.buffer_size <= 0
@@ -599,65 +941,96 @@ def main() -> int:
     results: dict[str, object] = {
         "os": platform.platform(),
         "python": platform.python_version(),
-        "library": str(args.library.resolve()),
+        "library": str(args.library.resolve()) if args.library else None,
+        "header": str(args.header.resolve()) if args.header else None,
         "audio_stream_requested": args.audio,
         "checks": [],
         "blockers": [],
     }
 
     try:
-        api = NativeApi(args.library)
-        results["api_version"] = check_api_version(api)
-        results["abi_layout"] = check_abi_layout()
-        check_null_validation(api)
-        device_counts = check_device_enumeration(api)
-        results["device_counts"] = device_counts
-        results["checks"] = [
-            "required exports and real library load",
-            "API version",
-            "fixed C ABI structure sizes",
-            "null-pointer status validation",
-            "device enumeration and out-of-range indices",
-        ]
-        print("PASS: real library loaded; API version and fixed layouts validated")
-        print("PASS: pointer/index validation and device enumeration")
-
-        if not args.audio:
+        if args.header_only:
+            results["abi_layout"] = check_abi_layout()
+            results["mixer_state_offsets"] = check_mixer_state_offsets()
+            results["header_contract"] = check_header_contract(args.header)
+            results["checks"] = [
+                "ctypes C ABI struct sizes and mixer-state field offsets",
+                "read-only mixer C ABI declaration/field-order check",
+            ]
             results["blockers"].append(
-                "Live chain/parameter/callback stress not run; pass --audio to "
-                "explicitly open a hardware stream."
+                "Native export binding, null-pointer behavior, and live mixer "
+                "semantics require an integrated engine library."
+            )
+            print("PASS: mixer-state ctypes size and field offsets")
+            print(
+                "PASS: read-only AuralisMixerState and mixer export declarations"
             )
             print(
-                "BLOCKED: chain, parameter, and callback stress checks require "
-                "--audio; this is not a full integration pass."
-            )
-            exit_code = 2
-        else:
-            audio_metrics = check_audio_chain_and_stress(api, args)
-            audio_metrics["parameter_effect"] = EFFECT_NAMES[args.parameter_effect]
-            audio_metrics["parameter_id"] = args.parameter_id
-            results["audio_integration"] = audio_metrics
-            results["checks"].append(
-                "live engine chain add/move/remove, bypass, wet/dry, parameter, "
-                "concurrent command stress"
-            )
-            results["blockers"].extend(
-                [
-                    "Preset save/load has no C ABI entry points in the current contract.",
-                    "Stress records control-call latency, not audio callback duration, "
-                    "allocations, underruns, or physical round-trip latency.",
-                ]
-            )
-            print("PASS: live chain, parameter, and concurrent command stress")
-            print(
-                "BLOCKED: preset round-trip and direct callback timing/allocation "
-                "instrumentation are not exposed by the current public API."
-            )
-            print(
-                "NOTE: reported stress latency is control-call latency, not callback "
-                "performance."
+                "PENDING: native symbol binding, null-pointer behavior, and live "
+                "mixer semantics require an integrated engine library."
             )
             exit_code = 0
+        else:
+            if args.header is not None:
+                results["header_contract"] = check_header_contract(args.header)
+            api = NativeApi(args.library)
+            results["api_version"] = check_api_version(api)
+            results["abi_layout"] = check_abi_layout()
+            results["mixer_state_offsets"] = check_mixer_state_offsets()
+            check_null_validation(api)
+            device_counts = check_device_enumeration(api)
+            results["device_counts"] = device_counts
+            results["checks"] = [
+                "required exports and real library load",
+                "API version",
+                "fixed C ABI structure sizes and mixer-state field offsets",
+                "null-pointer status validation",
+                "device enumeration and out-of-range indices",
+            ]
+            if args.header is not None:
+                results["checks"].append("read-only mixer C ABI declaration check")
+            print("PASS: real library loaded; API version and fixed layouts validated")
+            print("PASS: pointer/index validation and device enumeration")
+
+            if not args.audio:
+                results["blockers"].append(
+                    "Live mixer, chain/parameter, and callback stress not run; "
+                    "pass --audio to explicitly open a hardware stream."
+                )
+                print(
+                    "BLOCKED: live mixer, chain, parameter, and callback stress "
+                    "checks require --audio; this is not a full integration pass."
+                )
+                exit_code = 2
+            else:
+                audio_metrics = check_audio_chain_and_stress(api, args)
+                audio_metrics["parameter_effect"] = EFFECT_NAMES[args.parameter_effect]
+                audio_metrics["parameter_id"] = args.parameter_id
+                results["audio_integration"] = audio_metrics
+                results["checks"].append(
+                    "live mixer get/set/range behavior, chain add/move/remove, "
+                    "bypass, wet/dry, parameter, concurrent command stress"
+                )
+                results["blockers"].extend(
+                    [
+                        "Preset save/load has no C ABI entry points in the current contract.",
+                        "Stress records control-call latency, not audio callback duration, "
+                        "allocations, underruns, or physical round-trip latency.",
+                    ]
+                )
+                print(
+                    "PASS: live mixer state, chain, parameter, and concurrent "
+                    "command stress"
+                )
+                print(
+                    "BLOCKED: preset round-trip and direct callback timing/allocation "
+                    "instrumentation are not exposed by the current public API."
+                )
+                print(
+                    "NOTE: reported stress latency is control-call latency, not callback "
+                    "performance."
+                )
+                exit_code = 0
     except (AssertionError, FileNotFoundError, OSError, RuntimeError) as error:
         results["failure"] = str(error)
         print(f"FAIL: {error}", file=sys.stderr)
