@@ -21,7 +21,10 @@ described as complete.
 - Flutter Android/Windows project skeleton generated; starter Flutter widget
   test passes and a Windows Debug executable builds. The generated counter UI is
   scaffolding only and is not a product feature.
-- Android debug APK build is currently running; result pending.
+- Android Debug APK builds successfully from the Flutter starter project
+  (native audio plug-in/DSP not integrated).
+- Updated native contract tests pass 2/2, including C ABI header compilation
+  as both C and C++.
 
 ## Skills
 
@@ -45,7 +48,7 @@ described as complete.
 |---|---|
 | Repository/environment survey | Complete |
 | Architecture and shared contracts | Complete; frozen for parallel module work |
-| Project skeleton smoke build | Complete (Windows configure/build + 1/1 CTest) |
+| Project skeleton smoke build | Complete (Windows native 2/2 CTest; Flutter Windows and Android Debug builds) |
 | Native audio + DSP + mixer | In parallel implementation |
 | Flutter UI | In parallel implementation |
 | Windows/Android platform hosts | In parallel implementation |
@@ -57,7 +60,8 @@ described as complete.
 - [x] Establish architecture, module ownership, dependency graph, and C/C++
   contracts.
 - [x] Create CMake + Flutter Windows/Android skeletons and baseline test plan.
-- [x] Verify native contract configure/build/test and Flutter Windows shell build.
+- [x] Verify native contract configure/build/test and Flutter Windows/Android
+  shell builds.
 - [ ] Implement native engine lifecycle, device enumeration/selection, callback,
   passthrough, clipping-safe meters, and latency reporting.
 - [ ] Implement/test DSP: EQ, gate, compressor, limiter, reverb, delay, tone and
@@ -79,6 +83,8 @@ described as complete.
 - Contract smoke test is not the full JUCE audio engine build; the pinned JUCE
   dependency has not yet been fetched or compiled.
 - Android SDK licenses need acceptance before claiming Android build readiness.
+- The Android APK test used the unmodified Flutter starter app; it proves
+  packaging/toolchain only, not microphone access, audio I/O, or DSP.
 - Android Oboe plugin has not been compiled or tested on a physical device.
 - No real-time DSP, audio passthrough, Auto-Tune, or preset processing exists yet.
 - JUCE GPLv3/commercial terms must be reviewed before distribution.

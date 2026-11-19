@@ -57,6 +57,38 @@ typedef struct AuralisMeters {
     double estimated_latency_ms;
 } AuralisMeters;
 
+typedef enum AuralisEffectType {
+    AURALIS_EFFECT_NOISE_GATE = 0,
+    AURALIS_EFFECT_EQUALIZER = 1,
+    AURALIS_EFFECT_DE_ESSER = 2,
+    AURALIS_EFFECT_COMPRESSOR = 3,
+    AURALIS_EFFECT_PITCH_CORRECTION = 4,
+    AURALIS_EFFECT_SATURATION = 5,
+    AURALIS_EFFECT_REVERB = 6,
+    AURALIS_EFFECT_DELAY = 7,
+    AURALIS_EFFECT_LIMITER = 8
+} AuralisEffectType;
+
+enum {
+    AURALIS_MAX_EFFECTS_PER_CHANNEL = 16,
+    AURALIS_MAX_PARAMETERS_PER_EFFECT = 16
+};
+
+typedef struct AuralisEffectState {
+    uint32_t instance_id;
+    AuralisEffectType type;
+    uint32_t enabled;
+    float wet;
+    uint32_t parameter_count;
+    uint16_t parameter_ids[AURALIS_MAX_PARAMETERS_PER_EFFECT];
+    float parameter_values[AURALIS_MAX_PARAMETERS_PER_EFFECT];
+} AuralisEffectState;
+
+typedef struct AuralisChainState {
+    uint32_t effect_count;
+    AuralisEffectState effects[AURALIS_MAX_EFFECTS_PER_CHANNEL];
+} AuralisChainState;
+
 AURALIS_API uint32_t auralis_api_version(void);
 AURALIS_API AuralisEngine* auralis_engine_create(void);
 AURALIS_API void auralis_engine_destroy(AuralisEngine* engine);
@@ -77,6 +109,30 @@ AURALIS_API AuralisStatus auralis_engine_select_device(
     AuralisEngine* engine,
     uint32_t for_input,
     uint32_t index);
+AURALIS_API AuralisStatus auralis_engine_effect_add(
+    AuralisEngine* engine,
+    AuralisEffectType type,
+    uint32_t instance_id,
+    uint32_t index);
+AURALIS_API AuralisStatus auralis_engine_effect_remove(
+    AuralisEngine* engine,
+    uint32_t instance_id);
+AURALIS_API AuralisStatus auralis_engine_effect_move(
+    AuralisEngine* engine,
+    uint32_t instance_id,
+    uint32_t destination_index);
+AURALIS_API AuralisStatus auralis_engine_effect_set_enabled(
+    AuralisEngine* engine,
+    uint32_t instance_id,
+    uint32_t enabled);
+AURALIS_API AuralisStatus auralis_engine_effect_set_parameter(
+    AuralisEngine* engine,
+    uint32_t instance_id,
+    uint16_t parameter_id,
+    float normalized_value);
+AURALIS_API AuralisStatus auralis_engine_get_chain_state(
+    const AuralisEngine* engine,
+    AuralisChainState* destination);
 
 #ifdef __cplusplus
 }

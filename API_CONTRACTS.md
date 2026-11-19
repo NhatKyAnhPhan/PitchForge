@@ -10,7 +10,9 @@ public changes here first; do not silently change headers another module owns.
 - `auralis::audio::AudioBlockView` — non-owning planar float block, valid only
   during the current callback.
 - `auralis::dsp::AudioProcessor` — off-thread `prepare`, `reset`, callback
-  `process`, and enabled state.
+  `process`, enabled state, and normalized parameter get/set methods.
+- `auralis::dsp::createProcessor` — control-thread factory keyed by
+  `mixer::EffectType`; returns null for unsupported effects.
 - `auralis::mixer::SignalChain` — callback processing, bounded non-blocking
   command enqueue, and caller-owned snapshot copy.
 - `auralis::mixer::ChainCommand` — fixed-size trivially-copyable control
@@ -31,6 +33,12 @@ The UI bridge may call device enumeration, engine start/stop, device selection,
 and snapshot APIs from a control thread. It must not call allocating APIs from
 an audio callback. Real-time parameter updates use bounded queues in the native
 implementation.
+
+The C ABI also defines stable effect-type numeric values, fixed-capacity chain
+state snapshots, and add/remove/move/enable/parameter operations. A successful
+control call means the command was accepted into the bounded queue, not that it
+has already been applied by the audio callback. Queue saturation returns
+`AURALIS_STATUS_QUEUE_FULL`.
 
 API version starts at `1`; increment it only for incompatible ABI changes.
 
