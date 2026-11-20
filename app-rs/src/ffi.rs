@@ -9,6 +9,7 @@
 #![allow(non_camel_case_types, non_snake_case, dead_code)]
 
 use std::ffi::{c_char, c_void};
+use std::os::windows::ffi::OsStrExt;
 
 pub const AURALIS_STATUS_OK: i32 = 0;
 pub const AURALIS_STATUS_INVALID_ARGUMENT: i32 = 1;
@@ -179,6 +180,8 @@ pub struct EngineApi {
     pub engine_stop: extern "system" fn(EngineHandle),
     pub engine_is_running: extern "system" fn(EngineHandle) -> u32,
     pub engine_get_meters: extern "system" fn(EngineHandle, &mut AuralisMeters) -> i32,
+    pub engine_get_waveform: Option<extern "system" fn(EngineHandle, *mut f32, u32) -> i32>,
+    pub engine_set_test_tone: Option<extern "system" fn(EngineHandle, u32, f32) -> i32>,
     pub engine_get_mixer_state: extern "system" fn(EngineHandle, &mut AuralisMixerState) -> i32,
     pub engine_set_input_gain: extern "system" fn(EngineHandle, f32) -> i32,
     pub engine_set_output_gain: extern "system" fn(EngineHandle, f32) -> i32,
@@ -204,8 +207,20 @@ pub struct EngineApi {
 
 #[link(name = "kernel32")]
 extern "system" {
-    fn LoadLibraryA(name: *const c_char) -> *mut c_void;
+    fn LoadLibraryW(name: *const u16) -> *mut c_void;
     fn GetProcAddress(module: *mut c_void, name: *const c_char) -> Option<*mut c_void>;
+}
+
+#[link(name = "winmm")]
+extern "system" {
+    fn PlaySoundW(sound: *const u16, module: *mut c_void, flags: u32) -> i32;
+}
+
+pub fn play_system_test_sound() -> i32 {
+    const SND_ASYNC_ALIAS: u32 = 0x0001 | 0x0001_0000;
+    let alias: Vec<u16> = "SystemAsterisk\0".encode_utf16().collect();
+    let ok = unsafe { PlaySoundW(alias.as_ptr(), std::ptr::null_mut(), SND_ASYNC_ALIAS) };
+    if ok != 0 { AURALIS_STATUS_OK } else { AURALIS_STATUS_DEVICE_ERROR }
 }
 
 fn load_symbol<T>(module: *mut c_void, name: &str) -> Option<T> {
@@ -226,12 +241,34 @@ unsafe impl Send for Engine {}
 unsafe impl Sync for Engine {}
 
 impl Engine {
+    pub fn has_waveform_api(&self) -> bool { self.api.engine_get_waveform.is_some() }
+    pub fn has_test_tone_api(&self) -> bool { self.api.engine_set_test_tone.is_some() }
+
     pub fn load() -> Option<Engine> {
-        let cname = std::ffi::CString::new(ENGINE_DLL_NAME).ok()?;
-        let module = unsafe { LoadLibraryA(cname.as_ptr()) };
-        if module.is_null() {
-            return None;
+        let mut candidates = Vec::new();
+        if let Some(path) = std::env::var_os("AURALIS_ENGINE_DLL") {
+            candidates.push(std::path::PathBuf::from(path));
         }
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                candidates.push(dir.join(ENGINE_DLL_NAME));
+                for ancestor in dir.ancestors().take(6) {
+                    for config in ["Release", "Debug"] {
+                        candidates.push(ancestor.join("build-native/native/src/audio")
+                            .join(config).join(ENGINE_DLL_NAME));
+                    }
+                    for config in ["debug", "release"] {
+                        candidates.push(ancestor.join("app-rs/target")
+                            .join(config).join(ENGINE_DLL_NAME));
+                    }
+                }
+            }
+        }
+        let module = candidates.iter().find_map(|path| {
+            let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+            let handle = unsafe { LoadLibraryW(wide.as_ptr()) };
+            (!handle.is_null()).then_some(handle)
+        })?;
         let api = EngineApi {
             api_version: load_symbol(module, "auralis_api_version")?,
             engine_create: load_symbol(module, "auralis_engine_create")?,
@@ -240,6 +277,8 @@ impl Engine {
             engine_stop: load_symbol(module, "auralis_engine_stop")?,
             engine_is_running: load_symbol(module, "auralis_engine_is_running")?,
             engine_get_meters: load_symbol(module, "auralis_engine_get_meters")?,
+            engine_get_waveform: load_symbol(module, "auralis_engine_get_waveform"),
+            engine_set_test_tone: load_symbol(module, "auralis_engine_set_test_tone"),
             engine_get_mixer_state: load_symbol(module, "auralis_engine_get_mixer_state")?,
             engine_set_input_gain: load_symbol(module, "auralis_engine_set_input_gain")?,
             engine_set_output_gain: load_symbol(module, "auralis_engine_set_output_gain")?,
@@ -294,6 +333,20 @@ impl Engine {
             Ok(meters)
         } else {
             Err(status)
+        }
+    }
+
+    pub fn waveform(&self) -> Result<[f32; 128], i32> {
+        let mut values = [0.0f32; 128];
+        let getter = self.api.engine_get_waveform.ok_or(AURALIS_STATUS_NOT_READY)?;
+        let status = unsafe { getter(self.handle, values.as_mut_ptr(), values.len() as u32) };
+        if status == AURALIS_STATUS_OK { Ok(values) } else { Err(status) }
+    }
+
+    pub fn set_test_tone(&self, enabled: bool, frequency_hz: f32) -> i32 {
+        match self.api.engine_set_test_tone {
+            Some(setter) => unsafe { setter(self.handle, enabled as u32, frequency_hz) },
+            None => AURALIS_STATUS_NOT_READY,
         }
     }
 

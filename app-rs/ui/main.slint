@@ -74,6 +74,24 @@ component MeterBar {
     }
 }
 
+component WaveformView {
+    in property <[float]> samples;
+    Rectangle {
+        width: 100%; height: 86px;
+        background: #090A0B;
+        border-width: 1px; border-color: Palette.outline; border-radius: 5px;
+        Rectangle { x: 0; y: parent.height / 2; width: parent.width; height: 1px; background: #283038; }
+        for sample[i] in samples: Rectangle {
+            x: i * (parent.width / samples.length);
+            width: max(1px, parent.width / samples.length - 1px);
+            height: max(2px, min(1.0, abs(sample)) * (parent.height - 10px));
+            y: (parent.height - self.height) / 2;
+            background: Palette.primary;
+            border-radius: 1px;
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Devices panel
 // ---------------------------------------------------------------------------
@@ -224,7 +242,7 @@ component EffectSlot {
             Text { text: present ? "WET  " + wet-text : "NOT IN CHAIN"; color: Palette.textMuted; font-size: 10px; }
         }
         Button {
-            text: present ? (enabled ? "ON" : "OFF") : "+ ADD";
+            text: present ? (enabled ? "ON" : "OFF") : (name == "AUTO TUNE" ? "+ AUTO TUNE" : "+ ADD");
             clicked => { root.toggle(); }
         }
       }
@@ -236,7 +254,7 @@ component EffectSlot {
 // ---------------------------------------------------------------------------
 
 export component App inherits Window {
-    title: "AURALIS STUDIO — PITCHFORGE (Rust UI)";
+    title: "PitchForge — Voice Studio";
     preferred-width: 1440px;
     preferred-height: 940px;
     min-width: 900px;
@@ -474,6 +492,10 @@ export component App inherits Window {
     in-out property <string> presets-info;
 
     in-out property <string> chain-summary;
+    in-out property <[float]> waveform;
+    in-out property <bool> waveform-supported;
+    in-out property <bool> test-tone;
+    in-out property <bool> test-tone-supported;
 
     callback mute-toggle;
     callback start-engine;
@@ -488,6 +510,7 @@ export component App inherits Window {
     callback rev-toggle;
     callback delay-toggle;
     callback lim-toggle;
+    callback test-tone-toggle;
 
     ScrollView {
       width: 100%;
@@ -503,13 +526,27 @@ export component App inherits Window {
             background: #151719; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
             HorizontalBox {
                 padding: 12px; spacing: 14px;
-                Text { text: "◉  AURALIS STUDIO"; color: Palette.text; font-size: 19px; font-weight: 700; vertical-alignment: center; }
-                Text { text: "PITCHFORGE  /  VOICE PROCESSING"; color: Palette.textMuted; font-size: 11px; vertical-alignment: center; }
+                Text { text: "PITCHFORGE"; color: Palette.text; font-size: 21px; font-weight: 800; vertical-alignment: center; }
+                Text { text: "VOICE STUDIO  /  REAL-TIME PROCESSING"; color: Palette.textMuted; font-size: 11px; vertical-alignment: center; }
                 StatusBadge {
                     status-text: engine-started ? "● ENGINE ONLINE" : (engine-warning != "" ? "● DEMO MODE" : "● ENGINE READY");
                     badge-color: engine-error != "" ? Palette.destructive : Palette.accent;
                 }
+                Button { text: test-tone ? "■ STOP TEST TONE" : "▶ PLAY TEST SOUND"; enabled: test-tone-supported; clicked => { root.test-tone-toggle(); } }
                 Button { text: start-button-text; enabled: engine-warning == ""; clicked => { root.start-engine(); } }
+            }
+        }
+
+        Rectangle {
+            width: 100%; height: 116px;
+            background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+            VerticalBox {
+                padding: 10px; spacing: 5px;
+                HorizontalBox {
+                    Text { text: "AUDIO WAVEFORM"; color: Palette.text; font-size: 11px; font-weight: 700; }
+                    Text { text: !waveform-supported ? "UPDATE AUDIO ENGINE DLL TO ENABLE LIVE WAVEFORM" : (test-tone ? "440 Hz MONITOR TONE" : "LIVE · 128 SAMPLES"); color: test-tone ? Palette.accent : Palette.textMuted; font-size: 10px; }
+                }
+                WaveformView { samples: waveform; }
             }
         }
 
@@ -603,9 +640,9 @@ export component App inherits Window {
                 background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
                 VerticalBox {
                     padding: 14px; spacing: 10px;
-                    Text { text: "02  PITCH CONTROL"; color: Palette.primary; font-size: 14px; font-weight: 700; }
+                    Text { text: "02  AUTO TUNE"; color: Palette.primary; font-size: 14px; font-weight: 700; }
                     EffectSlot {
-                        name: "Pitch Correction"; present: pitch-present; enabled: pitch-enabled; wet-text: pitch-wet-text;
+                        name: "AUTO TUNE"; present: pitch-present; enabled: pitch-enabled; wet-text: pitch-wet-text;
                         param0-text: pitch-p0t; param1-text: pitch-p1t; param2-text: pitch-p2t; param3-text: pitch-p3t;
                         param4-text: pitch-p4t; param5-text: pitch-p5t;
                         toggle => { pitch-toggle(); }
@@ -653,7 +690,7 @@ export component App inherits Window {
         spacing: 18px;
         padding: 22px;
         Text {
-            text: "AURALIS STUDIO — PITCHFORGE (Rust UI)";
+            text: "PITCHFORGE — VOICE STUDIO";
             color: Palette.text;
             font-size: 24px;
             font-weight: 700;

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <numbers>
 #include <stdexcept>
 #include <utility>
 
@@ -170,6 +171,9 @@ AudioEngine::AudioEngine(
     for (auto& value : meterValues_) {
         value.store(std::bit_cast<std::uint32_t>(0.0f), std::memory_order_relaxed);
     }
+    for (auto& value : waveformValues_) {
+        value.store(std::bit_cast<std::uint32_t>(0.0f), std::memory_order_relaxed);
+    }
 }
 
 AudioEngine::~AudioEngine() {
@@ -197,6 +201,7 @@ bool AudioEngine::start(
 
     std::lock_guard lock(controlMutex_);
     backend_->stop();
+    sampleRateHz_.store(spec.sampleRate, std::memory_order_relaxed);
     configuredInputChannels_.store(inputChannelCount, std::memory_order_relaxed);
     {
         std::lock_guard commandLock(commandMutex_);
@@ -222,6 +227,7 @@ bool AudioEngine::start(
 }
 
 void AudioEngine::stop() noexcept {
+    testToneEnabled_.store(0, std::memory_order_release);
     try {
         std::lock_guard lock(controlMutex_);
         backend_->stop();
@@ -314,6 +320,21 @@ bool AudioEngine::copyMeters(
     return true;
 }
 
+bool AudioEngine::copyWaveform(std::array<float, 128>& values) const noexcept {
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        values[i] = std::bit_cast<float>(
+            waveformValues_[i].load(std::memory_order_relaxed));
+    }
+    return true;
+}
+
+void AudioEngine::setTestTone(bool enabled, float frequencyHz) noexcept {
+    if (!std::isfinite(frequencyHz)) frequencyHz = 440.0f;
+    testToneFrequencyHz_.store(std::clamp(frequencyHz, 20.0f, 20000.0f),
+                               std::memory_order_relaxed);
+    testToneEnabled_.store(enabled ? 1u : 0u, std::memory_order_release);
+}
+
 bool AudioEngine::copyChainSnapshot(
     mixer::SignalChainSnapshot& destination) const noexcept {
     try {
@@ -388,8 +409,20 @@ void AudioEngine::process(
     }
 
     const auto inputGain = inputGainLinear_.load(std::memory_order_relaxed);
-
-    for (std::uint32_t channel = 0; channel < output.channelCount; ++channel) {
+    const bool testTone = testToneEnabled_.load(std::memory_order_acquire) != 0;
+    if (testTone) {
+        const auto frequency = testToneFrequencyHz_.load(std::memory_order_relaxed);
+        const auto rate = sampleRateHz_.load(std::memory_order_relaxed);
+        const auto phaseStep = 2.0 * std::numbers::pi * frequency / rate;
+        for (std::uint32_t sample = 0; sample < output.sampleCount; ++sample) {
+            const auto value = static_cast<float>(0.16 * std::sin(testTonePhase_));
+            for (std::uint32_t channel = 0; channel < output.channelCount; ++channel)
+                output.channels[channel][sample] = value;
+            testTonePhase_ += phaseStep;
+            if (testTonePhase_ >= 2.0 * std::numbers::pi)
+                testTonePhase_ -= 2.0 * std::numbers::pi;
+        }
+    } else for (std::uint32_t channel = 0; channel < output.channelCount; ++channel) {
         auto* outputSamples = output.channels[channel];
         if (outputSamples == nullptr) {
             continue;
@@ -436,6 +469,26 @@ void AudioEngine::process(
     }
 
     publishMeters(activeInput, output);
+    const auto* waveformSamples = testTone
+        ? output.channels[0]
+        : activeInput.channels != nullptr && activeInput.channelCount > 0
+            ? activeInput.channels[0]
+            : nullptr;
+    publishWaveform(waveformSamples, testTone ? output.sampleCount : activeInput.sampleCount);
+}
+
+void AudioEngine::publishWaveform(
+    const float* samples, std::uint32_t sampleCount) noexcept {
+    for (std::size_t i = 0; i < waveformValues_.size(); ++i) {
+        float value = 0.0f;
+        if (samples != nullptr && sampleCount > 0) {
+            const auto index = static_cast<std::uint32_t>(
+                (i * static_cast<std::size_t>(sampleCount)) / waveformValues_.size());
+            value = samples[std::min(index, sampleCount - 1)];
+        }
+        waveformValues_[i].store(std::bit_cast<std::uint32_t>(value),
+                                 std::memory_order_relaxed);
+    }
 }
 
 void AudioEngine::publishMeters(
@@ -596,6 +649,27 @@ AURALIS_API AuralisStatus auralis_engine_get_meters(
         clipping ? 1u : 0u,
         latency,
     };
+    return AURALIS_STATUS_OK;
+}
+
+AURALIS_API AuralisStatus auralis_engine_get_waveform(
+    const AuralisEngine* engine, float* destination, std::uint32_t sampleCount) {
+    if (engine == nullptr || destination == nullptr || sampleCount == 0)
+        return AURALIS_STATUS_INVALID_ARGUMENT;
+    std::array<float, 128> values{};
+    if (!engine->implementation.copyWaveform(values))
+        return AURALIS_STATUS_INTERNAL_ERROR;
+    const auto count = std::min<std::size_t>(sampleCount, values.size());
+    std::copy_n(values.begin(), count, destination);
+    return AURALIS_STATUS_OK;
+}
+
+AURALIS_API AuralisStatus auralis_engine_set_test_tone(
+    AuralisEngine* engine, std::uint32_t enabled, float frequencyHz) {
+    if (engine == nullptr || !std::isfinite(frequencyHz)
+        || frequencyHz < 20.0f || frequencyHz > 20000.0f)
+        return AURALIS_STATUS_INVALID_ARGUMENT;
+    engine->implementation.setTestTone(enabled != 0, frequencyHz);
     return AURALIS_STATUS_OK;
 }
 

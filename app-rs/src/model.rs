@@ -7,6 +7,9 @@
 //! parameter → physical units) and `native/src/audio/AudioEngine.cpp`.
 
 use crate::ffi::*;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+static NEXT_EFFECT_INSTANCE: AtomicU32 = AtomicU32::new(10_000);
 
 pub const INPUT_GAIN_MIN_DB: f32 = -60.0;
 pub const INPUT_GAIN_MAX_DB: f32 = 24.0;
@@ -280,6 +283,10 @@ pub struct Model {
     pub meters: Meters,
     pub chain: Vec<EffectModel>,
     pub pitch: PitchModel,
+    pub waveform: Vec<f32>,
+    pub waveform_supported: bool,
+    pub test_tone: bool,
+    pub test_tone_supported: bool,
     pub presets: Vec<PresetInfo>,
     pub preset_name: String,
     pub last_preset_name: String,
@@ -289,6 +296,10 @@ pub struct Model {
 impl Model {
     pub fn new() -> Self {
         let engine = Engine::load();
+        let waveform_supported = engine.as_ref().map(Engine::has_waveform_api).unwrap_or(false);
+        // The Windows system test sound is always available as a fallback;
+        // the continuous 440 Hz tone is used when the native DLL supports it.
+        let test_tone_supported = true;
         let mut engine_warning = String::new();
         if engine.is_none() {
             engine_warning = format!(
@@ -316,6 +327,10 @@ impl Model {
             meters: Meters::default(),
             chain: Vec::new(),
             pitch: PitchModel::default(),
+            waveform: vec![0.0; 128],
+            waveform_supported,
+            test_tone: false,
+            test_tone_supported,
             presets: Vec::new(),
             preset_name: String::new(),
             last_preset_name: String::new(),
@@ -379,6 +394,9 @@ impl Model {
 
     pub fn poll(&mut self) {
         if let Some(engine) = &self.engine {
+            if let Ok(samples) = engine.waveform() {
+                self.waveform.copy_from_slice(&samples);
+            }
             if let Ok(m) = engine.meters() {
                 self.meters = Meters {
                     input_peak_left: m.input_peak_left,
@@ -458,6 +476,15 @@ impl Model {
     }
 
     pub fn start_engine(&mut self) -> i32 {
+        if self.engine_started {
+            if let Some(engine) = &self.engine {
+                if self.test_tone { let _ = engine.set_test_tone(false, 440.0); }
+                engine.stop();
+            }
+            self.test_tone = false;
+            self.engine_started = false;
+            return AURALIS_STATUS_OK;
+        }
         let engine = match &self.engine {
             Some(engine) => engine,
             None => return AURALIS_STATUS_NOT_READY,
@@ -585,7 +612,24 @@ impl Model {
             .unwrap_or(false);
         let instance_id = match self.chain.iter().find(|e| e.ty == ty) {
             Some(e) => e.instance_id,
-            None => return AURALIS_STATUS_NOT_READY,
+            None => {
+                let id = NEXT_EFFECT_INSTANCE.fetch_add(1, Ordering::Relaxed);
+                let index = self.chain.len() as u32;
+                let Some(engine) = &self.engine else { return AURALIS_STATUS_NOT_READY };
+                let status = engine.effect_add(ty, id, index);
+                if status != AURALIS_STATUS_OK { return status; }
+                let _ = engine.effect_set_wet(id, 1.0);
+                if ty == AURALIS_EFFECT_PITCH_CORRECTION {
+                    // C major, fast retune, full correction, subtle humanize.
+                    let _ = engine.effect_set_parameter(id, 0, 0.0);
+                    let _ = engine.effect_set_parameter(id, 1, 1.0 / 3.0);
+                    let _ = engine.effect_set_parameter(id, 2, 0.88);
+                    let _ = engine.effect_set_parameter(id, 3, 1.0);
+                    let _ = engine.effect_set_parameter(id, 4, 0.12);
+                }
+                self.chain.push(EffectModel { instance_id: id, ty, enabled: true, wet: 1.0, params: Vec::new() });
+                return AURALIS_STATUS_OK;
+            }
         };
         let status = match &self.engine {
             Some(engine) => engine.effect_set_enabled(instance_id, (!current) as u32),
@@ -597,6 +641,21 @@ impl Model {
             }
         }
         status
+    }
+
+    pub fn toggle_test_tone(&mut self) -> i32 {
+        if self.engine_started
+            && self.engine.as_ref().map(Engine::has_test_tone_api).unwrap_or(false)
+        {
+            let enabled = !self.test_tone;
+            let status = self.engine.as_ref()
+                .map(|engine| engine.set_test_tone(enabled, 440.0))
+                .unwrap_or(AURALIS_STATUS_NOT_READY);
+            if status == AURALIS_STATUS_OK { self.test_tone = enabled; }
+            status
+        } else {
+            play_system_test_sound()
+        }
     }
 
     pub fn chain_summary(&self) -> String {

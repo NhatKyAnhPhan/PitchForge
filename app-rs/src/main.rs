@@ -139,6 +139,22 @@ fn main() -> Result<(), slint::PlatformError> {
             model.toggle_effect(AURALIS_EFFECT_LIMITER);
         });
     }
+    {
+        let model = model.clone();
+        app.on_test_tone_toggle(move || {
+            let mut model = model.lock().unwrap();
+            let status = model.toggle_test_tone();
+            if status != ffi::AURALIS_STATUS_OK {
+                model.engine_error = if !model.engine_started {
+                    "Start the audio engine before playing a test tone".into()
+                } else {
+                    format!("Test tone unavailable: {}", status_name(status))
+                };
+            } else {
+                model.engine_error.clear();
+            }
+        });
+    }
 
     // ------------------------------------------------------------------
     // Poll thread — pushes state to Slint every ~40ms
@@ -324,6 +340,12 @@ fn push_state_inner(app: &App, model: &Model) {
     app.set_presets_info(ss(model.presets_info.clone()));
 
     app.set_chain_summary(ss(model.chain_summary()));
+    app.set_waveform(slint::ModelRc::new(slint::VecModel::from_iter(
+        model.waveform.iter().copied(),
+    )));
+    app.set_waveform_supported(model.waveform_supported);
+    app.set_test_tone(model.test_tone);
+    app.set_test_tone_supported(model.test_tone_supported);
 }
 
 fn param_at(e: Option<&EffectModel>, i: usize) -> (bool, f32, slint::SharedString) {

@@ -49,6 +49,8 @@ public:
         std::array<float, 8>& values,
         bool& clipping,
         double& estimatedLatencyMs) const noexcept;
+    [[nodiscard]] bool copyWaveform(std::array<float, 128>& values) const noexcept;
+    void setTestTone(bool enabled, float frequencyHz) noexcept;
     [[nodiscard]] bool copyChainSnapshot(
         mixer::SignalChainSnapshot& destination) const noexcept;
     [[nodiscard]] bool copyPitchDiagnostics(
@@ -61,12 +63,18 @@ private:
     void publishMeters(
         ConstAudioBlockView input,
         AudioBlockView output) noexcept;
+    void publishWaveform(const float* samples, std::uint32_t sampleCount) noexcept;
 
     std::unique_ptr<AudioDeviceBackend> backend_;
     std::unique_ptr<mixer::SignalChain> signalChain_;
     mutable std::mutex controlMutex_;
     std::mutex commandMutex_;
     std::array<std::atomic<std::uint32_t>, 8> meterValues_{};
+    std::array<std::atomic<std::uint32_t>, 128> waveformValues_{};
+    std::atomic<std::uint32_t> testToneEnabled_{0};
+    std::atomic<float> testToneFrequencyHz_{440.0f};
+    std::atomic<double> sampleRateHz_{48000.0};
+    double testTonePhase_ = 0.0;
     std::atomic<std::uint32_t> clipping_{0};
     std::atomic<std::uint32_t> configuredInputChannels_{0};
     std::atomic<float> inputGainDb_{0.0f};

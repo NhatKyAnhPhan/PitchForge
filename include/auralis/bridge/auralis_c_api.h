@@ -114,6 +114,16 @@ AURALIS_API uint32_t auralis_engine_is_running(const AuralisEngine* engine);
 AURALIS_API AuralisStatus auralis_engine_get_meters(
     const AuralisEngine* engine,
     AuralisMeters* destination);
+// Additive UI telemetry / monitor helpers. `sample_count` is the capacity of
+// destination; the function copies min(sample_count, 128) latest signal samples.
+AURALIS_API AuralisStatus auralis_engine_get_waveform(
+    const AuralisEngine* engine,
+    float* destination,
+    uint32_t sample_count);
+AURALIS_API AuralisStatus auralis_engine_set_test_tone(
+    AuralisEngine* engine,
+    uint32_t enabled,
+    float frequency_hz);
 AURALIS_API AuralisStatus auralis_engine_get_mixer_state(
     const AuralisEngine* engine,
     AuralisMixerState* destination);
