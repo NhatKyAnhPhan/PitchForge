@@ -22,9 +22,12 @@ flutter build apk --debug
 
 Android uses the pinned Oboe 1.9.3 Prefab dependency and the NDK CMake target
 `auralis_audio_engine` (`libauralis_audio_engine.so`). Its CMake links
-`auralis_core`; the common engine remains the sole owner of the versioned C ABI
-used by Dart FFI. Do not add a second Android-specific C ABI or pass audio
-samples through a Flutter channel.
+the shared engine object, `auralis_mixer`, and `auralis_dsp`; the common engine
+remains the sole owner of the versioned C ABI used by Dart FFI. Do not add a
+second Android-specific C ABI or pass audio samples through a Flutter channel.
+The Debug APK and exported engine symbols were verified for `arm64-v8a`,
+`armeabi-v7a`, and `x86_64`. This is a packaging/build result only; no stream has
+been tested on an Android device.
 
 Before starting the C ABI engine, Dart should invoke the lifecycle channel:
 
@@ -83,7 +86,8 @@ sample rates, buffer sizes, focus behavior and reconnect timing vary by device,
 OS build and accessory. A successful CMake/APK build proves packaging only; it
 does not establish low latency or correct behavior on hardware.
 
-The current contract baseline has a headers-only `auralis_core` target. The
-Android target is wired to that shared target and intentionally does not
-implement duplicate C ABI symbols; until the common engine/C ABI sources are
-integrated into `auralis_core`, the packaged backend alone is not FFI-ready.
+`auralis_core` remains a framework-independent interface target. The Android
+shared library explicitly includes the common engine object and links the DSP
+and mixer implementations, so its v1 C ABI exports are present. Microphone
+permission/focus, routing, audible passthrough, latency, and reconnection still
+require physical-device verification.

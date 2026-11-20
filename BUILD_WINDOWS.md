@@ -2,16 +2,14 @@
 
 ## Support boundary
 
-The Flutter Windows runner and packaging path are buildable independently from
-the audio backend. The native target in this checkout is currently an
-interface-only `auralis_core`; there is no `auralis_audio_engine.dll` or
-implemented WASAPI stream yet. A successful Flutter build/package is therefore
-the UI shell only, not a realtime audio MVP.
+The Flutter Windows runner, JUCE/WASAPI native engine, and packaging path are
+implemented. A JUCE-enabled Release build produces `auralis_audio_engine.dll`.
+The DLL and its C ABI were build- and symbol-verified, but no real endpoint has
+been opened; a successful build/package is not yet a realtime audio MVP.
 
-Windows audio is intended to use JUCE's WASAPI backend. Do not infer support for
-ASIO, exclusive-mode operation, a particular device format, or hot-plug
-recovery until the Windows engine adapter is implemented and tested on real
-devices.
+Windows audio uses JUCE's shared-mode WASAPI backend. ASIO and exclusive mode
+are not enabled. Device format and hot-plug behavior still require testing on
+real devices.
 
 ## Requirements
 
@@ -37,8 +35,8 @@ different Visual Studio generator.
 
 ## Native core
 
-The local toolchain supports `Visual Studio 18 2026`. The scaffold/contracts
-build below does not fetch JUCE and does not produce an audio engine DLL.
+The local toolchain supports `Visual Studio 18 2026`. The native build below
+does not fetch JUCE and does not produce an audio engine DLL.
 From the repository root:
 
 ```powershell
@@ -61,13 +59,10 @@ cmake -S . -B build/native-juce -G 'Visual Studio 18 2026' -A x64 `
 cmake --build build/native-juce --config Release
 ```
 
-This project state still defines only the `auralis_core` interface target: the
-JUCE-enabled command verifies/builds the dependency (including `juceaide`) but
-does not yet produce `auralis_audio_engine.dll`. Once native integration adds
-that target, build it with
-`cmake --build build/native-juce --config Release --target auralis_audio_engine`
-and pass the resulting DLL to the Flutter build/package steps below. Do not
-describe the scaffold or JUCE dependency build alone as audio-enabled.
+The integrated target produces
+`build\native-juce\native\src\audio\Release\auralis_audio_engine.dll`.
+The build has been verified using JUCE 8.0.11 and Visual Studio 2026. It does
+not establish that real endpoints start, pass audio, or recover from hot-plug.
 
 ## Flutter desktop
 
@@ -109,8 +104,8 @@ The Flutter output should contain both `auralis_studio.exe` and
 and its dependent DLLs according to normal DLL search rules. The Dart FFI
 consumer should open the engine by an absolute path derived from
 `Platform.resolvedExecutable`'s parent directory, rather than relying on the
-current working directory. No Dart FFI loader exists in this checkout yet.
-Ensure any non-system dependencies of the engine are staged alongside it too.
+current working directory. Ensure any non-system dependencies of the engine are
+staged alongside it too.
 
 ## Release ZIP
 
@@ -128,11 +123,11 @@ Package the shell:
 .\packaging\windows\package-release.ps1
 ```
 
-Package with the engine once it is available:
+Package with the integrated Release engine DLL:
 
 ```powershell
 .\packaging\windows\package-release.ps1 `
-  -EngineDll '.\build\native\Release\auralis_audio_engine.dll'
+  -EngineDll '.\build\audio-windows-vs18\native\src\audio\Release\auralis_audio_engine.dll'
 ```
 
 Without `-EngineDll`, the script warns that the archive is a UI shell without
@@ -141,10 +136,10 @@ paths contaminating an archive.
 
 ## WASAPI, devices, privacy, and errors
 
-- WASAPI is the intended Windows backend through JUCE, but is not implemented in
-  this checkout. The future backend must enumerate input/output endpoints,
-  report the selected device and supported format, and own stream lifecycle and
-  device-change recovery; do not add a second audio path in the Flutter runner.
+- The JUCE/WASAPI backend enumerates endpoints, selects devices, and owns native
+  stream lifecycle. Device format negotiation, endpoint hot-plug, callback
+  timing, and real-time passthrough remain hardware QA items; do not add a second
+  audio path in the Flutter runner.
 - Device enumeration and engine lifecycle are control-thread operations.
   Audio samples stay in the native callback; do not route them through Dart.
 - Respect Windows **Settings → Privacy & security → Microphone** and the
@@ -157,9 +152,9 @@ paths contaminating an archive.
   `AURALIS_STATUS_DEVICE_ERROR` means the endpoint/stream could not be opened
   or failed; `AURALIS_STATUS_NOT_READY` means the engine is not initialized;
   `AURALIS_STATUS_QUEUE_FULL` means a bounded control update was not accepted;
-  `AURALIS_STATUS_INTERNAL_ERROR` is an unexpected native failure. These are
-  contract meanings; detailed OS error strings and reconnect policy remain to
-  be implemented by the Windows backend.
+  `AURALIS_STATUS_INTERNAL_ERROR` is an unexpected native failure. The adapter
+  reports status-level failures; detailed OS error strings and recovery behavior
+  still require hardware testing.
 - For endpoint open failures, ask the user to check Windows Sound input/output
   selection, app microphone privacy, device connectivity, and whether another
   application is holding a device in an incompatible mode. Then retry

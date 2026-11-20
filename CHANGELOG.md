@@ -17,3 +17,12 @@
   explicit shell-only labeling when the native DLL is absent.
 - Add a real-library C ABI integration harness, mixer ABI declaration/layout
   checks, and a baseline QA report; runtime behavior remains pending.
+- Implement the native DSP processors, pitch detector/correction, fixed-capacity
+  signal chain, presets codec, C ABI audio engine, and Windows WASAPI/Android
+  Oboe backends.
+- Integrate the native modules; pass 5/5 CTest cases in Debug and Release, build
+  a JUCE-enabled Windows DLL, and build Android APK libraries for three ABIs.
+- Fix release-mode mixer tests, Android CMake include paths and lifecycle/device
+  reconfiguration handling, plus Windows JUCE duplicate-module linking.
+- Keep physical-device audio validation and app-facing atomic preset replacement
+  explicitly pending.
