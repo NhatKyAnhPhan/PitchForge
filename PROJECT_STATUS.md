@@ -1,6 +1,6 @@
 # Project Status
 
-**Milestone:** Native audio/DSP/mixer integrated; Flutter product UI pending
+**Milestone:** Native audio/DSP/mixer integrated; AURALIS STUDIO Rust/Slint UI (app-rs/) integrated; Flutter placeholder remains in app/
 **Date:** 2026-11-20
 **Overall:** Native modules and both platform libraries build; automated native
 tests pass. Audio has not been verified on physical hardware, so the MVP is not
@@ -28,6 +28,14 @@ complete.
 - Flutter Debug APK builds with Oboe, engine, mixer, and DSP for `arm64-v8a`,
   `armeabi-v7a`, and `x86_64`; the shared engine symbols were verified in each
   ABI library.
+- AURALIS STUDIO Rust/Slint UI (`app-rs/`) built with Slint 1.19
+  (`renderer-winit-software`), integrated over the C ABI: mixer panel, meters,
+  device panel, effects chain cards, pitch display, presets (JSON). Runs
+  against the Windows Release engine DLL; native DLL verified via CTest; live
+  audio still untested.
+- Flutter product UI work that had been planned on `feature/ui` had no
+  persisted branch or worktree in this environment; the Rust UI was built
+  directly in `app-rs/` and is the runnable product interface.
 - Flutter product UI work is still on `feature/ui` and has not yet been merged
   into `main`. The APK build therefore verifies native packaging, not the final
   product UI.
@@ -57,7 +65,7 @@ complete.
 | Architecture and shared contracts | Complete; frozen for parallel module work |
 | Project skeleton smoke build | Complete (Windows native 2/2 CTest; Flutter Windows and Android Debug builds) |
 | Native audio + DSP + mixer | Integrated; 5/5 native tests pass in Debug and Release |
-| Flutter UI | In progress on `feature/ui`; not yet integrated |
+| AURALIS STUDIO (Rust/Slint) UI | Implemented in `app-rs/` (Slint 1.19, software renderer); integrated over the C ABI (device panel, mixer + meters, effects chain, pitch display, presets) | Flutter placeholder kept in `app/` |
 | Windows runner/package host | Native Release DLL builds; physical-device and packaged-app audio testing pending |
 | Android native host | APK and 3 ABI libraries build; physical-device testing pending |
 | QA harness/report | Real Windows DLL loads; audio/callback suite is explicitly pending |
@@ -83,8 +91,10 @@ complete.
 - [ ] Complete app-facing preset load/save transaction across the native ABI.
   Native binary codec and Flutter file persistence exist, but atomic replacement
   of a live chain is not yet exposed or verified.
-- [ ] Implement responsive desktop/mobile mixer UI, device panel, meters,
-  effect controls, pitch display, accessible interactions, and preset browser.
+- [x] Implement responsive desktop/mobile mixer UI (app-rs/, Slint), device
+  panel, meters, effect controls (per-type cards + wet sliders), pitch
+  display, accessible interactions (focusable Slider/Button/ComboBox), and
+  preset browser (JSON save/load).
 - [x] Integrate Windows WASAPI host and produce a Windows Release audio DLL
   (the real device stream remains untested).
 - [x] Integrate Android Oboe/AAudio plugin, permission/lifecycle/routing handling,
@@ -101,7 +111,7 @@ complete.
 | Audio Engine | `feature/engine` | `C:\Users\admin\.local\share\opencode\worktree\global\engine` | C API, common engine, Windows WASAPI adapter | Merged (`29f39f1`); integrated DLL built |
 | DSP | `feature/dsp` | `C:\Users\admin\.local\share\opencode\worktree\global\dsp` | DSP algorithms + tests | Merged (`3a41409`); integrated tests pass |
 | Mixer | `feature/mixer` | `C:\Users\admin\.local\share\opencode\worktree\global\mixer` | Signal chain + presets + tests | Merged (`e08f938`); Release test and snapshot fixes integrated |
-| UI/UX | `feature/ui` | `C:\Users\admin\.local\share\opencode\worktree\global\ui` | Flutter widgets/services/tests | In progress; awaiting final test/commit |
+| UI/UX | `app-rs/` (AURALIS Studio Rust/Slint UI) | Flutter placeholder in `app/`; historical `feature/ui` worktree was absent (see status) | Implemented; awaiting manual run/verify |
 | Windows | `feature/windows` | `C:\Users\admin\.local\share\opencode\worktree\global\windows` | Windows runner/package/docs | Merged (`d5edd0f`); shell package tested |
 | Android | `feature/android` | `C:\Users\admin\.local\share\opencode\worktree\global\android` | Oboe/NDK host + Gradle/docs | Merged (`5a45f0e`); fixes integrated and APK exports verified |
 | QA | `feature/qa` | `C:\Users\admin\.local\share\opencode\worktree\global\qa` | Integration tests/reports | Merged (`3dba2c4`); runtime audio mode still pending |
@@ -121,5 +131,9 @@ branch. Integration fixes are recorded on `main` after each build/review cycle.
 - Pitch-shift artifact quality and reported latency are only covered by
   deterministic signal tests; live vocal quality is unverified. True formant
   preservation is not implemented.
-- Atomic native preset replacement is not yet available through the C ABI.
+- Atomic native preset replacement is not yet available through the C ABI
+  (Rust UI persists full-chain JSON presets itself).
+- Slint `renderer-winit-software` (pure Rust renderer) selected; Android/iOS
+  parity of the Rust UI is not yet set up (observed world: Windows verified
+  by cargo check; Android native stream remains pending).
 - JUCE GPLv3/commercial terms must be reviewed before distribution.

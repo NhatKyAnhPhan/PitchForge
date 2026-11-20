@@ -1,0 +1,821 @@
+// AURALIS STUDIO — PitchForge product UI (Rust/Slint)
+// Palette: design-system/auralis-studio/MASTER.md
+
+import {
+    VerticalBox,
+    HorizontalBox,
+    Slider,
+    ComboBox,
+    Button,
+    LineEdit,
+} from "std-widgets.slint";
+
+global Palette {
+    in property <color> background: #0F172A;
+    in property <color> surface: #192134;
+    in property <color> outline: #FFFFFF18;
+    in property <color> text: #FFFFFF;
+    in property <color> textMuted: #94A3B8;
+    in property <color> primary: #7C3AED;
+    in property <color> accent: #22C55E;
+    in property <color> destructive: #DC2626;
+    in property <color> onAccent: #0F172A;
+}
+
+// ---------------------------------------------------------------------------
+// Styled primitives
+// ---------------------------------------------------------------------------
+
+component StatusBadge {
+    in property <string> status-text;
+    in property <color> badge-color;
+    Rectangle {
+        background: Palette.surface;
+        border-width: 1px;
+        border-color: badge-color;
+        border-radius: 4px;
+        height: 20px;
+        Text {
+            text: status-text;
+            color: badge-color;
+            font-size: 11px;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+component MeterBar {
+    // A vertical meter bar with a peak fill and an RMS fill.
+    in property <float> peak;
+    in property <float> rms;
+    property <float> fill: max(0.0, min(1.0, peak));
+
+    Rectangle {
+        width: 40px;
+        height: 120px;
+        background: Palette.surface;
+        border-width: 1px;
+        border-color: Palette.outline;
+        border-radius: 4px;
+        Rectangle {
+            width: 100%;
+            height: 120px * fill;
+            background: peak > 0.98 ? Palette.destructive : Palette.accent;
+            border-radius: 3px;
+        }
+        Rectangle {
+            width: 18px;
+            height: 90px * max(0.0, min(1.0, rms));
+            background: Palette.primary;
+            border-radius: 2px;
+            y: 15px;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Devices panel
+// ---------------------------------------------------------------------------
+
+component DevicesPanel {
+    in property <[string]> input-names;
+    in property <[string]> output-names;
+    in-out property <int> selected-input;
+    in-out property <int> selected-output;
+    in property <string> input-status;
+    in property <string> output-status;
+
+    VerticalBox {
+        Text {
+            text: "DEVICES";
+            color: Palette.textMuted;
+            font-size: 13px;
+        }
+        Text {
+            text: "INPUT";
+            color: Palette.textMuted;
+            font-size: 11px;
+        }
+        ComboBox {
+            model: input-names;
+            current-index: selected-input;
+        }
+        Text {
+            text: input-status;
+            color: Palette.textMuted;
+            font-size: 11px;
+        }
+        Text {
+            text: "OUTPUT";
+            color: Palette.textMuted;
+            font-size: 11px;
+        }
+        ComboBox {
+            model: output-names;
+            current-index: selected-output;
+        }
+        Text {
+            text: output-status;
+            color: Palette.textMuted;
+            font-size: 11px;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mixer panel
+// ---------------------------------------------------------------------------
+
+component MixerPanel {
+    in property <float> in-peak-l;
+    in property <float> in-peak-r;
+    in property <float> in-rms-l;
+    in property <float> in-rms-r;
+    in property <float> out-peak-l;
+    in property <float> out-peak-r;
+    in property <float> out-rms-l;
+    in property <float> out-rms-r;
+    in property <bool> clipping;
+    in property <string> latency-text;
+    in property <string> status-text;
+
+    VerticalBox {
+        Text {
+            text: "MIXER";
+            color: Palette.textMuted;
+            font-size: 13px;
+        }
+        HorizontalBox {
+            spacing: 16px;
+            VerticalBox {
+                Text {
+                    text: "INPUT";
+                    color: Palette.textMuted;
+                    font-size: 11px;
+                }
+                MeterBar {
+                    peak: in-peak-l;
+                    rms: in-rms-l;
+                }
+                MeterBar {
+                    peak: in-peak-r;
+                    rms: in-rms-r;
+                }
+            }
+            VerticalBox {
+                Text {
+                    text: "OUTPUT";
+                    color: Palette.textMuted;
+                    font-size: 11px;
+                }
+                MeterBar {
+                    peak: out-peak-l;
+                    rms: out-rms-l;
+                }
+                MeterBar {
+                    peak: out-peak-r;
+                    rms: out-rms-r;
+                }
+            }
+        }
+        Text {
+            text: latency-text;
+            color: Palette.textMuted;
+            font-size: 11px;
+        }
+        Text {
+            text: status-text;
+            color: Palette.textMuted;
+            font-size: 11px;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Effect slot card
+// ---------------------------------------------------------------------------
+
+component EffectSlot {
+    // Display-only card for one effect type in the chain.
+    in property <string> name;
+    in property <bool> present;
+    in property <bool> enabled;
+    in property <string> wet-text;
+    in property <string> param0-text;
+    in property <string> param1-text;
+    in property <string> param2-text;
+    in property <string> param3-text;
+    in property <string> param4-text;
+    in property <string> param5-text;
+    callback toggle;
+
+    Rectangle {
+        background: Palette.surface;
+        border-width: 1px;
+        border-color: Palette.outline;
+        border-radius: 8px;
+        VerticalBox {
+            spacing: 6px;
+            HorizontalBox {
+                Text {
+                    text: name;
+                    color: Palette.text;
+                    font-weight: 700;
+                }
+                if (!present) : Text {
+                    text: "(off)";
+                    color: Palette.textMuted;
+                }
+            }
+            if (present) : Button {
+                text: enabled ? "On" : "Off";
+                clicked => { root.toggle(); }
+            }
+            Text {
+                text: "Wet: " + wet-text;
+                color: Palette.textMuted;
+                font-size: 11px;
+            }
+            if (param0-text != "") : Text {
+                text: param0-text;
+                color: Palette.textMuted;
+                font-size: 11px;
+            }
+            if (param1-text != "") : Text {
+                text: param1-text;
+                color: Palette.textMuted;
+                font-size: 11px;
+            }
+            if (param2-text != "") : Text {
+                text: param2-text;
+                color: Palette.textMuted;
+                font-size: 11px;
+            }
+            if (param3-text != "") : Text {
+                text: param3-text;
+                color: Palette.textMuted;
+                font-size: 11px;
+            }
+            if (param4-text != "") : Text {
+                text: param4-text;
+                color: Palette.textMuted;
+                font-size: 11px;
+            }
+            if (param5-text != "") : Text {
+                text: param5-text;
+                color: Palette.textMuted;
+                font-size: 11px;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
+
+export component App inherits Window {
+    title: "AURALIS STUDIO — PITCHFORGE (Rust UI)";
+    width: 1260px;
+    height: 980px;
+
+    // --- devices ---
+    in-out property <[string]> input-device-names;
+    in-out property <[string]> output-device-names;
+    in-out property <int> selected-input;
+    in-out property <int> selected-output;
+    in-out property <string> input-device-status;
+    in-out property <string> output-device-status;
+
+    // --- engine ---
+    in-out property <string> engine-warning;
+    in-out property <bool> engine-started;
+    in-out property <string> engine-error;
+    in-out property <string> start-button-text;
+
+    // --- mixer ---
+    in-out property <float> input-gain-db;
+    in-out property <float> output-gain-db;
+    in-out property <float> pan;
+    in-out property <bool> muted;
+    in-out property <string> input-gain-text;
+    in-out property <string> output-gain-text;
+    in-out property <string> pan-text;
+
+    // --- meters ---
+    in-out property <float> in-peak-l;
+    in-out property <float> in-peak-r;
+    in-out property <float> in-rms-l;
+    in-out property <float> in-rms-r;
+    in-out property <float> out-peak-l;
+    in-out property <float> out-peak-r;
+    in-out property <float> out-rms-l;
+    in-out property <float> out-rms-r;
+    in-out property <bool> clipping;
+    in-out property <string> latency-text;
+
+    // --- effects slots ---
+    in-out property <bool> ng-present;
+    in-out property <bool> ng-enabled;
+    in-out property <float> ng-wet;
+    in-out property <string> ng-wet-text;
+    in-out property <bool> ng-p0;
+    in-out property <float> ng-p0v;
+    in-out property <string> ng-p0t;
+    in-out property <bool> ng-p1;
+    in-out property <float> ng-p1v;
+    in-out property <string> ng-p1t;
+    in-out property <bool> ng-p2;
+    in-out property <float> ng-p2v;
+    in-out property <string> ng-p2t;
+    in-out property <bool> ng-p3;
+    in-out property <float> ng-p3v;
+    in-out property <string> ng-p3t;
+    in-out property <bool> ng-p4;
+    in-out property <float> ng-p4v;
+    in-out property <string> ng-p4t;
+
+    in-out property <bool> eq-present;
+    in-out property <bool> eq-enabled;
+    in-out property <float> eq-wet;
+    in-out property <string> eq-wet-text;
+    in-out property <bool> eq-p0;
+    in-out property <float> eq-p0v;
+    in-out property <string> eq-p0t;
+    in-out property <bool> eq-p1;
+    in-out property <float> eq-p1v;
+    in-out property <string> eq-p1t;
+    in-out property <bool> eq-p2;
+    in-out property <float> eq-p2v;
+    in-out property <string> eq-p2t;
+    in-out property <bool> eq-p3;
+    in-out property <float> eq-p3v;
+    in-out property <string> eq-p3t;
+    in-out property <bool> eq-p4;
+    in-out property <float> eq-p4v;
+    in-out property <string> eq-p4t;
+    in-out property <bool> eq-p5;
+    in-out property <float> eq-p5v;
+    in-out property <string> eq-p5t;
+
+    in-out property <bool> deesser-present;
+    in-out property <bool> deesser-enabled;
+    in-out property <float> deesser-wet;
+    in-out property <string> deesser-wet-text;
+    in-out property <bool> deesser-p0;
+    in-out property <float> deesser-p0v;
+    in-out property <string> deesser-p0t;
+    in-out property <bool> deesser-p1;
+    in-out property <float> deesser-p1v;
+    in-out property <string> deesser-p1t;
+    in-out property <bool> deesser-p2;
+    in-out property <float> deesser-p2v;
+    in-out property <string> deesser-p2t;
+    in-out property <bool> deesser-p3;
+    in-out property <float> deesser-p3v;
+    in-out property <string> deesser-p3t;
+    in-out property <bool> deesser-p4;
+    in-out property <float> deesser-p4v;
+    in-out property <string> deesser-p4t;
+
+    in-out property <bool> comp-present;
+    in-out property <bool> comp-enabled;
+    in-out property <float> comp-wet;
+    in-out property <string> comp-wet-text;
+    in-out property <bool> comp-p0;
+    in-out property <float> comp-p0v;
+    in-out property <string> comp-p0t;
+    in-out property <bool> comp-p1;
+    in-out property <float> comp-p1v;
+    in-out property <string> comp-p1t;
+    in-out property <bool> comp-p2;
+    in-out property <float> comp-p2v;
+    in-out property <string> comp-p2t;
+    in-out property <bool> comp-p3;
+    in-out property <float> comp-p3v;
+    in-out property <string> comp-p3t;
+    in-out property <bool> comp-p4;
+    in-out property <float> comp-p4v;
+    in-out property <string> comp-p4t;
+    in-out property <bool> comp-p5;
+    in-out property <float> comp-p5v;
+    in-out property <string> comp-p5t;
+
+    in-out property <bool> pitch-present;
+    in-out property <bool> pitch-enabled;
+    in-out property <float> pitch-wet;
+    in-out property <string> pitch-wet-text;
+    in-out property <bool> pitch-p0;
+    in-out property <float> pitch-p0v;
+    in-out property <string> pitch-p0t;
+    in-out property <bool> pitch-p1;
+    in-out property <float> pitch-p1v;
+    in-out property <string> pitch-p1t;
+    in-out property <bool> pitch-p2;
+    in-out property <float> pitch-p2v;
+    in-out property <string> pitch-p2t;
+    in-out property <bool> pitch-p3;
+    in-out property <float> pitch-p3v;
+    in-out property <string> pitch-p3t;
+    in-out property <bool> pitch-p4;
+    in-out property <float> pitch-p4v;
+    in-out property <string> pitch-p4t;
+    in-out property <bool> pitch-p5;
+    in-out property <float> pitch-p5v;
+    in-out property <string> pitch-p5t;
+
+    in-out property <bool> sat-present;
+    in-out property <bool> sat-enabled;
+    in-out property <float> sat-wet;
+    in-out property <string> sat-wet-text;
+    in-out property <bool> sat-p0;
+    in-out property <float> sat-p0v;
+    in-out property <string> sat-p0t;
+    in-out property <bool> sat-p1;
+    in-out property <float> sat-p1v;
+    in-out property <string> sat-p1t;
+    in-out property <bool> sat-p2;
+    in-out property <float> sat-p2v;
+    in-out property <string> sat-p2t;
+
+    in-out property <bool> rev-present;
+    in-out property <bool> rev-enabled;
+    in-out property <float> rev-wet;
+    in-out property <string> rev-wet-text;
+    in-out property <bool> rev-p0;
+    in-out property <float> rev-p0v;
+    in-out property <string> rev-p0t;
+    in-out property <bool> rev-p1;
+    in-out property <float> rev-p1v;
+    in-out property <string> rev-p1t;
+    in-out property <bool> rev-p2;
+    in-out property <float> rev-p2v;
+    in-out property <string> rev-p2t;
+    in-out property <bool> rev-p3;
+    in-out property <float> rev-p3v;
+    in-out property <string> rev-p3t;
+    in-out property <bool> rev-p4;
+    in-out property <float> rev-p4v;
+    in-out property <string> rev-p4t;
+    in-out property <bool> rev-p5;
+    in-out property <float> rev-p5v;
+    in-out property <string> rev-p5t;
+
+    in-out property <bool> delay-present;
+    in-out property <bool> delay-enabled;
+    in-out property <float> delay-wet;
+    in-out property <string> delay-wet-text;
+    in-out property <bool> delay-p0;
+    in-out property <float> delay-p0v;
+    in-out property <string> delay-p0t;
+    in-out property <bool> delay-p1;
+    in-out property <float> delay-p1v;
+    in-out property <string> delay-p1t;
+    in-out property <bool> delay-p2;
+    in-out property <float> delay-p2v;
+    in-out property <string> delay-p2t;
+    in-out property <bool> delay-p3;
+    in-out property <float> delay-p3v;
+    in-out property <string> delay-p3t;
+
+    in-out property <bool> lim-present;
+    in-out property <bool> lim-enabled;
+    in-out property <float> lim-wet;
+    in-out property <string> lim-wet-text;
+    in-out property <bool> lim-p0;
+    in-out property <float> lim-p0v;
+    in-out property <string> lim-p0t;
+    in-out property <bool> lim-p1;
+    in-out property <float> lim-p1v;
+    in-out property <string> lim-p1t;
+    in-out property <bool> lim-p2;
+    in-out property <float> lim-p2v;
+    in-out property <string> lim-p2t;
+
+    // --- pitch display ---
+    in-out property <bool> pitch-available;
+    in-out property <float> pitch-detected-hz;
+    in-out property <float> pitch-target-hz;
+    in-out property <float> pitch-confidence;
+    in-out property <float> pitch-shift;
+    in-out property <string> pitch-detected-text;
+    in-out property <string> pitch-target-text;
+    in-out property <string> pitch-confidence-text;
+    in-out property <string> pitch-shift-text;
+
+    // --- presets ---
+    in-out property <[string]> preset-names;
+    in-out property <int> selected-preset;
+    in-out property <string> preset-name;
+    in-out property <string> presets-info;
+
+    in-out property <string> chain-summary;
+
+    callback mute-toggle;
+    callback start-engine;
+    callback save-preset;
+    callback load-preset;
+    callback ng-toggle;
+    callback eq-toggle;
+    callback deesser-toggle;
+    callback comp-toggle;
+    callback pitch-toggle;
+    callback sat-toggle;
+    callback rev-toggle;
+    callback delay-toggle;
+    callback lim-toggle;
+
+    VerticalBox {
+        spacing: 12px;
+        Text {
+            text: "AURALIS STUDIO — PITCHFORGE (Rust UI)";
+            color: Palette.text;
+            font-size: 22px;
+            font-weight: 700;
+        }
+        HorizontalBox {
+            spacing: 12px;
+            StatusBadge {
+                status-text: engine-warning != "" ? "Engine: " + engine-warning : "Engine: waiting";
+                badge-color: engine-error != "" ? Palette.destructive : Palette.accent;
+            }
+            Button {
+                text: start-button-text;
+                enabled: engine-warning == "";
+                clicked => { root.start-engine(); }
+            }
+        }
+        HorizontalBox {
+            spacing: 24px;
+            DevicesPanel {
+                input-names: input-device-names;
+                output-names: output-device-names;
+                selected-input: selected-input;
+                selected-output: selected-output;
+                input-status: input-device-status;
+                output-status: output-device-status;
+            }
+            MixerPanel {
+                in-peak-l: in-peak-l;
+                in-peak-r: in-peak-r;
+                in-rms-l: in-rms-l;
+                in-rms-r: in-rms-r;
+                out-peak-l: out-peak-l;
+                out-peak-r: out-peak-r;
+                out-rms-l: out-rms-l;
+                out-rms-r: out-rms-r;
+                clipping: clipping;
+                latency-text: latency-text;
+                status-text: engine-warning;
+            }
+            VerticalBox {
+                spacing: 12px;
+                // ---- Mixer faders + pan + mute ----
+                VerticalBox {
+                    spacing: 8px;
+                    Text {
+                        text: "INPUT (dB)";
+                        color: Palette.textMuted;
+                        font-size: 12px;
+                    }
+                    Slider {
+                        minimum: -60;
+                        maximum: 24;
+                        value: input-gain-db;
+                    }
+                    Text {
+                        text: input-gain-text;
+                        color: Palette.text;
+                    }
+                    Text {
+                        text: "OUTPUT (dB)";
+                        color: Palette.textMuted;
+                        font-size: 12px;
+                    }
+                    Slider {
+                        minimum: -60;
+                        maximum: 12;
+                        value: output-gain-db;
+                    }
+                    Text {
+                        text: output-gain-text;
+                        color: Palette.text;
+                    }
+                    HorizontalBox {
+                        spacing: 12px;
+                        Text {
+                            text: "PAN (-1 .. +1)";
+                            color: Palette.textMuted;
+                            font-size: 12px;
+                        }
+                        Slider {
+                            minimum: -1;
+                            maximum: 1;
+                            value: pan;
+                        }
+                        Text {
+                            text: pan-text;
+                            color: Palette.text;
+                        }
+                        Button {
+                            text: muted ? "Mute" : "Unmute";
+                            clicked => { root.mute-toggle(); }
+                        }
+                    }
+                }
+
+                // ---- Effects chain ----
+                Text {
+                    text: "EFFECTS CHAIN";
+                    color: Palette.textMuted;
+                    font-size: 13px;
+                }
+                Text {
+                    text: chain-summary;
+                    color: Palette.textMuted;
+                    font-size: 11px;
+                }
+                VerticalBox {
+                    spacing: 8px;
+                    EffectSlot {
+                        name: "Noise Gate";
+                        present: ng-present;
+                        enabled: ng-enabled;
+                        wet-text: ng-wet-text;
+                        param0-text: ng-p0t;
+                        param1-text: ng-p1t;
+                        param2-text: ng-p2t;
+                        param3-text: ng-p3t;
+                        param4-text: ng-p4t;
+                        toggle => { ng-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "Equalizer";
+                        present: eq-present;
+                        enabled: eq-enabled;
+                        wet-text: eq-wet-text;
+                        param0-text: eq-p0t;
+                        param1-text: eq-p1t;
+                        param2-text: eq-p2t;
+                        param3-text: eq-p3t;
+                        param4-text: eq-p4t;
+                        param5-text: eq-p5t;
+                        toggle => { eq-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "De-Esser";
+                        present: deesser-present;
+                        enabled: deesser-enabled;
+                        wet-text: deesser-wet-text;
+                        param0-text: deesser-p0t;
+                        param1-text: deesser-p1t;
+                        param2-text: deesser-p2t;
+                        param3-text: deesser-p3t;
+                        param4-text: deesser-p4t;
+                        toggle => { deesser-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "Compressor";
+                        present: comp-present;
+                        enabled: comp-enabled;
+                        wet-text: comp-wet-text;
+                        param0-text: comp-p0t;
+                        param1-text: comp-p1t;
+                        param2-text: comp-p2t;
+                        param3-text: comp-p3t;
+                        param4-text: comp-p4t;
+                        param5-text: comp-p5t;
+                        toggle => { comp-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "Pitch Correction";
+                        present: pitch-present;
+                        enabled: pitch-enabled;
+                        wet-text: pitch-wet-text;
+                        param0-text: pitch-p0t;
+                        param1-text: pitch-p1t;
+                        param2-text: pitch-p2t;
+                        param3-text: pitch-p3t;
+                        param4-text: pitch-p4t;
+                        param5-text: pitch-p5t;
+                        toggle => { pitch-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "Saturation";
+                        present: sat-present;
+                        enabled: sat-enabled;
+                        wet-text: sat-wet-text;
+                        param0-text: sat-p0t;
+                        param1-text: sat-p1t;
+                        param2-text: sat-p2t;
+                        toggle => { sat-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "Reverb";
+                        present: rev-present;
+                        enabled: rev-enabled;
+                        wet-text: rev-wet-text;
+                        param0-text: rev-p0t;
+                        param1-text: rev-p1t;
+                        param2-text: rev-p2t;
+                        param3-text: rev-p3t;
+                        param4-text: rev-p4t;
+                        param5-text: rev-p5t;
+                        toggle => { rev-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "Delay";
+                        present: delay-present;
+                        enabled: delay-enabled;
+                        wet-text: delay-wet-text;
+                        param0-text: delay-p0t;
+                        param1-text: delay-p1t;
+                        param2-text: delay-p2t;
+                        param3-text: delay-p3t;
+                        toggle => { delay-toggle(); }
+                    }
+                    EffectSlot {
+                        name: "Limiter";
+                        present: lim-present;
+                        enabled: lim-enabled;
+                        wet-text: lim-wet-text;
+                        param0-text: lim-p0t;
+                        param1-text: lim-p1t;
+                        param2-text: lim-p2t;
+                        toggle => { lim-toggle(); }
+                    }
+                }
+                Text {
+                    text: "(no effects on the chain yet)";
+                    color: Palette.textMuted;
+                    font-size: 11px;
+                }
+            }
+
+            VerticalBox {
+                spacing: 12px;
+                Text {
+                    text: "PITCH";
+                    color: Palette.textMuted;
+                    font-size: 13px;
+                }
+                if (!pitch-available) : Text {
+                    text: "Not detected yet (add Pitch Correction to the chain)";
+                    color: Palette.textMuted;
+                    font-size: 11px;
+                }
+                if (pitch-available) : VerticalBox {
+                    Text {
+                        text: pitch-detected-text;
+                        color: Palette.text;
+                        font-weight: 700;
+                    }
+                    Text {
+                        text: "Target: " + pitch-target-text;
+                        color: Palette.textMuted;
+                        font-size: 11px;
+                    }
+                    Text {
+                        text: "Confidence: " + pitch-confidence-text;
+                        color: Palette.textMuted;
+                        font-size: 11px;
+                    }
+                    Text {
+                        text: "Shift: " + pitch-shift-text;
+                        color: Palette.textMuted;
+                        font-size: 11px;
+                    }
+                }
+            }
+        }
+
+        Text {
+            text: "PRESETS";
+            color: Palette.textMuted;
+            font-size: 13px;
+        }
+        HorizontalBox {
+            spacing: 8px;
+            ComboBox {
+                model: preset-names;
+                current-index: selected-preset;
+            }
+            LineEdit {
+                text: preset-name;
+            }
+            Button {
+                text: "Save";
+                clicked => { root.save-preset(); }
+            }
+            Button {
+                text: "Load";
+                clicked => { root.load-preset(); }
+            }
+        }
+        Text {
+            text: presets-info;
+            color: Palette.textMuted;
+            font-size: 11px;
+        }
+    }
+}

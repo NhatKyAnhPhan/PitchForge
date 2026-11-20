@@ -67,10 +67,24 @@ API version starts at `1`; increment it only for incompatible ABI changes.
   and lifecycle.
 - DSP owns effect algorithms and per-effect parameter interpretation.
 - Mixer owns effect identity, ordering, bypass, routing, and chain snapshots.
-- Flutter owns presentation, input validation, preset browsing, and persistence
-  requests; presets are not hardcoded display-only data.
+- The UI layer (the Flutter and Rust UIs) owns presentation, input
+  validation, preset browsing, and persistence requests; presets are not
+  hardcoded display-only data.
 - Windows/Android adapters own platform permissions, device changes, and their
   native stream implementation.
+
+## Proposed additions (additive; C API version stays `1`)
+
+Added to support the pitch-display UI milestone:
+
+- `AuralisPitchDiagnostics` (`detected_frequency_hz`, `target_frequency_hz`,
+  `confidence`, `applied_shift_semitones`) and
+  `auralis_engine_get_pitch_diagnostics(engine, instance_id, destination)` —
+  control-thread pitch-display telemetry. `instance_id` is the pitch-correction
+  slot ID from `auralis_engine_get_chain_state`. Returns
+  `AURALIS_STATUS_NOT_READY` when the slot is absent or the processor is not
+  pitch correction. Implemented by `FixedSignalChain::copyPitchDiagnostics`
+  (slot scan plus `dsp::getPitchCorrectionDiagnostics`).
 
 ## Presets
 

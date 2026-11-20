@@ -1,6 +1,7 @@
 #pragma once
 
 #include <auralis/audio/AudioTypes.h>
+#include <auralis/dsp/PitchDiagnostics.h>
 
 #include <array>
 #include <cstdint>
@@ -72,6 +73,13 @@ public:
 
     // Copies the most recently published state into caller-owned storage.
     virtual void copySnapshot(SignalChainSnapshot& destination) const noexcept = 0;
+
+    // Control-thread telemetry: copies the latest pitch-correction
+    // diagnostics for the chain instance into caller-owned storage.
+    // Returns false when the instance is absent or is not pitch correction.
+    [[nodiscard]] virtual bool copyPitchDiagnostics(
+        std::uint32_t instanceId,
+        auralis::dsp::PitchCorrectionDiagnostics& destination) const noexcept = 0;
 };
 
 } // namespace auralis::mixer

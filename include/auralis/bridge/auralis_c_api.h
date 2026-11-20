@@ -96,6 +96,13 @@ typedef struct AuralisChainState {
     AuralisEffectState effects[AURALIS_MAX_EFFECTS_PER_CHANNEL];
 } AuralisChainState;
 
+typedef struct AuralisPitchDiagnostics {
+    float detected_frequency_hz;
+    float target_frequency_hz;
+    float confidence;
+    float applied_shift_semitones;
+} AuralisPitchDiagnostics;
+
 AURALIS_API uint32_t auralis_api_version(void);
 AURALIS_API AuralisEngine* auralis_engine_create(void);
 AURALIS_API void auralis_engine_destroy(AuralisEngine* engine);

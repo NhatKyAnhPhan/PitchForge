@@ -3,6 +3,7 @@
 
 # CMake and native builds
 build/
+build-native/
 cmake-build-*/
 out/
 CMakeFiles/

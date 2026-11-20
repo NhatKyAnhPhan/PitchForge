@@ -411,6 +411,25 @@ public:
         }
     }
 
+    [[nodiscard]] bool copyPitchDiagnostics(
+        std::uint32_t instanceId,
+        auralis::dsp::PitchCorrectionDiagnostics& destination) const noexcept override {
+        for (std::uint32_t i = 0; i < size_; ++i) {
+            const auto& slot = slots_[i];
+            if (slot.state.instanceId != instanceId) {
+                continue;
+            }
+            const auto& entry =
+                processors_[effectIndex(slot.state.type)][slot.processorIndex];
+            if (entry.processor
+                && auralis::dsp::getPitchCorrectionDiagnostics(
+                    *entry.processor, destination)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 private:
     enum class ApplyResult : std::uint8_t {
         NoChange,

@@ -325,6 +325,18 @@ bool AudioEngine::copyChainSnapshot(
     }
 }
 
+bool AudioEngine::copyPitchDiagnostics(
+    std::uint32_t instanceId,
+    auralis::dsp::PitchCorrectionDiagnostics& destination) const noexcept {
+    try {
+        std::lock_guard lock(controlMutex_);
+        return signalChain_ != nullptr
+            && signalChain_->copyPitchDiagnostics(instanceId, destination);
+    } catch (...) {
+        return false;
+    }
+}
+
 bool AudioEngine::enqueue(const mixer::ChainCommand& command) noexcept {
     try {
         std::lock_guard lock(commandMutex_);
@@ -855,6 +867,25 @@ AURALIS_API AuralisStatus auralis_engine_get_chain_state(
         }
     }
     *destination = result;
+    return AURALIS_STATUS_OK;
+}
+
+AURALIS_API AuralisStatus auralis_engine_get_pitch_diagnostics(
+    const AuralisEngine* engine,
+    uint32_t instance_id,
+    AuralisPitchDiagnostics* destination) {
+    if (engine == nullptr || destination == nullptr) {
+        return AURALIS_STATUS_INVALID_ARGUMENT;
+    }
+    auralis::dsp::PitchCorrectionDiagnostics diagnostics{};
+    if (!engine->implementation.copyPitchDiagnostics(
+            instance_id, diagnostics)) {
+        return AURALIS_STATUS_NOT_READY;
+    }
+    destination->detected_frequency_hz = diagnostics.detectedFrequencyHz;
+    destination->target_frequency_hz = diagnostics.targetFrequencyHz;
+    destination->confidence = diagnostics.confidence;
+    destination->applied_shift_semitones = diagnostics.appliedShiftSemitones;
     return AURALIS_STATUS_OK;
 }
 

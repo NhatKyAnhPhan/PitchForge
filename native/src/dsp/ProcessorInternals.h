@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PitchDiagnostics.h"
+#include <auralis/dsp/PitchDiagnostics.h>
 
 #include <auralis/dsp/AudioProcessor.h>
 

@@ -1,6 +1,6 @@
 #include "ProcessorInternals.h"
 #include "ProcessorLatency.h"
-#include "PitchDiagnostics.h"
+#include <auralis/dsp/PitchDiagnostics.h>
 
 namespace auralis::dsp {
 

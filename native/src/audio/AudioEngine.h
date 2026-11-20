@@ -51,6 +51,9 @@ public:
         double& estimatedLatencyMs) const noexcept;
     [[nodiscard]] bool copyChainSnapshot(
         mixer::SignalChainSnapshot& destination) const noexcept;
+    [[nodiscard]] bool copyPitchDiagnostics(
+        std::uint32_t instanceId,
+        auralis::dsp::PitchCorrectionDiagnostics& destination) const noexcept;
     [[nodiscard]] bool enqueue(const mixer::ChainCommand& command) noexcept;
 
 private:
