@@ -8,18 +8,19 @@ import {
     ComboBox,
     Button,
     LineEdit,
+    ScrollView,
 } from "std-widgets.slint";
 
 global Palette {
-    in property <color> background: #0F172A;
-    in property <color> surface: #192134;
-    in property <color> outline: #FFFFFF18;
-    in property <color> text: #FFFFFF;
-    in property <color> textMuted: #94A3B8;
-    in property <color> primary: #7C3AED;
-    in property <color> accent: #22C55E;
-    in property <color> destructive: #DC2626;
-    in property <color> onAccent: #0F172A;
+    in property <color> background: #0B0C0E;
+    in property <color> surface: #17191C;
+    in property <color> outline: #2B2E32;
+    in property <color> text: #F3F5F7;
+    in property <color> textMuted: #A6AFBA;
+    in property <color> primary: #08C9E8;
+    in property <color> accent: #00D69A;
+    in property <color> destructive: #FF416B;
+    in property <color> onAccent: #07100D;
 }
 
 // ---------------------------------------------------------------------------
@@ -30,15 +31,15 @@ component StatusBadge {
     in property <string> status-text;
     in property <color> badge-color;
     Rectangle {
-        background: Palette.surface;
+        background: #101214;
         border-width: 1px;
         border-color: badge-color;
         border-radius: 4px;
-        height: 20px;
+        height: 28px;
         Text {
             text: status-text;
             color: badge-color;
-            font-size: 11px;
+            font-size: 13px;
             horizontal-alignment: center;
         }
     }
@@ -51,24 +52,24 @@ component MeterBar {
     property <float> fill: max(0.0, min(1.0, peak));
 
     Rectangle {
-        width: 40px;
-        height: 120px;
-        background: Palette.surface;
+        width: 22px;
+        height: 142px;
+        background: #090A0B;
         border-width: 1px;
         border-color: Palette.outline;
         border-radius: 4px;
         Rectangle {
             width: 100%;
-            height: 120px * fill;
+            height: 142px * fill;
             background: peak > 0.98 ? Palette.destructive : Palette.accent;
             border-radius: 3px;
         }
         Rectangle {
-            width: 18px;
-            height: 90px * max(0.0, min(1.0, rms));
+            width: 8px;
+            height: 110px * max(0.0, min(1.0, rms));
             background: Palette.primary;
             border-radius: 2px;
-            y: 15px;
+            y: 16px;
         }
     }
 }
@@ -89,12 +90,12 @@ component DevicesPanel {
         Text {
             text: "DEVICES";
             color: Palette.textMuted;
-            font-size: 13px;
+            font-size: 15px;
         }
         Text {
             text: "INPUT";
             color: Palette.textMuted;
-            font-size: 11px;
+            font-size: 15px;
         }
         ComboBox {
             model: input-names;
@@ -103,12 +104,12 @@ component DevicesPanel {
         Text {
             text: input-status;
             color: Palette.textMuted;
-            font-size: 11px;
+            font-size: 15px;
         }
         Text {
             text: "OUTPUT";
             color: Palette.textMuted;
-            font-size: 11px;
+            font-size: 15px;
         }
         ComboBox {
             model: output-names;
@@ -117,7 +118,7 @@ component DevicesPanel {
         Text {
             text: output-status;
             color: Palette.textMuted;
-            font-size: 11px;
+            font-size: 15px;
         }
     }
 }
@@ -143,7 +144,7 @@ component MixerPanel {
         Text {
             text: "MIXER";
             color: Palette.textMuted;
-            font-size: 13px;
+            font-size: 15px;
         }
         HorizontalBox {
             spacing: 16px;
@@ -151,7 +152,7 @@ component MixerPanel {
                 Text {
                     text: "INPUT";
                     color: Palette.textMuted;
-                    font-size: 11px;
+                    font-size: 15px;
                 }
                 MeterBar {
                     peak: in-peak-l;
@@ -166,7 +167,7 @@ component MixerPanel {
                 Text {
                     text: "OUTPUT";
                     color: Palette.textMuted;
-                    font-size: 11px;
+                    font-size: 15px;
                 }
                 MeterBar {
                     peak: out-peak-l;
@@ -181,12 +182,12 @@ component MixerPanel {
         Text {
             text: latency-text;
             color: Palette.textMuted;
-            font-size: 11px;
+            font-size: 15px;
         }
         Text {
             text: status-text;
             color: Palette.textMuted;
-            font-size: 11px;
+            font-size: 15px;
         }
     }
 }
@@ -196,7 +197,6 @@ component MixerPanel {
 // ---------------------------------------------------------------------------
 
 component EffectSlot {
-    // Display-only card for one effect type in the chain.
     in property <string> name;
     in property <bool> present;
     in property <bool> enabled;
@@ -210,63 +210,24 @@ component EffectSlot {
     callback toggle;
 
     Rectangle {
-        background: Palette.surface;
-        border-width: 1px;
-        border-color: Palette.outline;
-        border-radius: 8px;
+      width: 100%; height: 76px;
+      background: Palette.surface;
+      border-width: 1px;
+      border-color: Palette.outline;
+      border-radius: 8px;
+      HorizontalBox {
+        padding: 9px;
+        spacing: 6px;
         VerticalBox {
-            spacing: 6px;
-            HorizontalBox {
-                Text {
-                    text: name;
-                    color: Palette.text;
-                    font-weight: 700;
-                }
-                if (!present) : Text {
-                    text: "(off)";
-                    color: Palette.textMuted;
-                }
-            }
-            if (present) : Button {
-                text: enabled ? "On" : "Off";
-                clicked => { root.toggle(); }
-            }
-            Text {
-                text: "Wet: " + wet-text;
-                color: Palette.textMuted;
-                font-size: 11px;
-            }
-            if (param0-text != "") : Text {
-                text: param0-text;
-                color: Palette.textMuted;
-                font-size: 11px;
-            }
-            if (param1-text != "") : Text {
-                text: param1-text;
-                color: Palette.textMuted;
-                font-size: 11px;
-            }
-            if (param2-text != "") : Text {
-                text: param2-text;
-                color: Palette.textMuted;
-                font-size: 11px;
-            }
-            if (param3-text != "") : Text {
-                text: param3-text;
-                color: Palette.textMuted;
-                font-size: 11px;
-            }
-            if (param4-text != "") : Text {
-                text: param4-text;
-                color: Palette.textMuted;
-                font-size: 11px;
-            }
-            if (param5-text != "") : Text {
-                text: param5-text;
-                color: Palette.textMuted;
-                font-size: 11px;
-            }
+            alignment: center;
+            Text { text: name; color: Palette.text; font-size: 13px; font-weight: 700; }
+            Text { text: present ? "WET  " + wet-text : "NOT IN CHAIN"; color: Palette.textMuted; font-size: 10px; }
         }
+        Button {
+            text: present ? (enabled ? "ON" : "OFF") : "+ ADD";
+            clicked => { root.toggle(); }
+        }
+      }
     }
 }
 
@@ -276,8 +237,11 @@ component EffectSlot {
 
 export component App inherits Window {
     title: "AURALIS STUDIO — PITCHFORGE (Rust UI)";
-    width: 1260px;
-    height: 980px;
+    preferred-width: 1440px;
+    preferred-height: 940px;
+    min-width: 900px;
+    min-height: 640px;
+    background: Palette.background;
 
     // --- devices ---
     in-out property <[string]> input-device-names;
@@ -525,12 +489,173 @@ export component App inherits Window {
     callback delay-toggle;
     callback lim-toggle;
 
-    VerticalBox {
+    ScrollView {
+      width: 100%;
+      height: 100%;
+      VerticalBox {
+        width: 100%;
         spacing: 12px;
+        padding: 16px;
+
+        // Top bar: brand, engine status and primary action.
+        Rectangle {
+            width: 100%; height: 58px;
+            background: #151719; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+            HorizontalBox {
+                padding: 12px; spacing: 14px;
+                Text { text: "◉  AURALIS STUDIO"; color: Palette.text; font-size: 19px; font-weight: 700; vertical-alignment: center; }
+                Text { text: "PITCHFORGE  /  VOICE PROCESSING"; color: Palette.textMuted; font-size: 11px; vertical-alignment: center; }
+                StatusBadge {
+                    status-text: engine-started ? "● ENGINE ONLINE" : (engine-warning != "" ? "● DEMO MODE" : "● ENGINE READY");
+                    badge-color: engine-error != "" ? Palette.destructive : Palette.accent;
+                }
+                Button { text: start-button-text; enabled: engine-warning == ""; clicked => { root.start-engine(); } }
+            }
+        }
+
+        // Device meters and signal status.
+        Rectangle {
+            width: 100%; height: 208px;
+            background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+            VerticalBox {
+                padding: 14px; spacing: 10px;
+                HorizontalBox {
+                    Text { text: "LIVE AUDIO  /  INPUT → OUTPUT"; color: Palette.text; font-size: 14px; font-weight: 700; }
+                    Text { text: latency-text + "    " + (clipping ? "CLIPPING" : "SIGNAL OK"); color: clipping ? Palette.destructive : Palette.accent; font-size: 11px; }
+                }
+                HorizontalBox {
+                    spacing: 28px;
+                    VerticalBox {
+                        Text { text: "MIC INPUT"; color: Palette.textMuted; font-size: 11px; }
+                        HorizontalBox {
+                            spacing: 8px;
+                            MeterBar { peak: in-peak-l; rms: in-rms-l; }
+                            MeterBar { peak: in-peak-r; rms: in-rms-r; }
+                            VerticalBox {
+                                Text { text: "LEFT"; color: Palette.textMuted; font-size: 10px; }
+                                Text { text: "RIGHT"; color: Palette.textMuted; font-size: 10px; }
+                                Text { text: input-device-status; color: Palette.textMuted; font-size: 10px; }
+                            }
+                        }
+                    }
+                    Rectangle { width: 1px; height: 128px; background: Palette.outline; }
+                    VerticalBox {
+                        Text { text: "MASTER OUTPUT"; color: Palette.textMuted; font-size: 11px; }
+                        HorizontalBox {
+                            spacing: 8px;
+                            MeterBar { peak: out-peak-l; rms: out-rms-l; }
+                            MeterBar { peak: out-peak-r; rms: out-rms-r; }
+                            VerticalBox {
+                                Text { text: "LEFT"; color: Palette.textMuted; font-size: 10px; }
+                                Text { text: "RIGHT"; color: Palette.textMuted; font-size: 10px; }
+                                Text { text: output-device-status; color: Palette.textMuted; font-size: 10px; }
+                            }
+                        }
+                    }
+                    Rectangle { width: 1px; height: 128px; background: Palette.outline; }
+                    VerticalBox {
+                        Text { text: "GAIN STAGING"; color: Palette.textMuted; font-size: 11px; }
+                        Text { text: "INPUT  " + input-gain-text; color: Palette.text; font-size: 13px; }
+                        Slider { minimum: -60; maximum: 24; value: input-gain-db; }
+                        Text { text: "OUTPUT  " + output-gain-text; color: Palette.text; font-size: 13px; }
+                        Slider { minimum: -60; maximum: 12; value: output-gain-db; }
+                    }
+                }
+            }
+        }
+
+        // Preset strip.
+        Rectangle {
+            width: 100%; height: 54px;
+            background: #151719; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+            HorizontalBox {
+                padding: 9px; spacing: 8px;
+                Text { text: "PRESET"; color: Palette.accent; font-size: 11px; vertical-alignment: center; }
+                ComboBox { model: preset-names; current-index: selected-preset; }
+                LineEdit { text: preset-name; }
+                Button { text: "SAVE"; clicked => { root.save-preset(); } }
+                Button { text: "LOAD"; clicked => { root.load-preset(); } }
+                Text { text: presets-info; color: Palette.textMuted; font-size: 10px; vertical-alignment: center; }
+            }
+        }
+
+        // Main rack: routing, pitch correction and effect modules.
+        HorizontalBox {
+            width: 100%; spacing: 12px;
+            Rectangle {
+                background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+                VerticalBox {
+                    padding: 14px; spacing: 9px;
+                    Text { text: "01  AUDIO ROUTING"; color: Palette.accent; font-size: 14px; font-weight: 700; }
+                    Text { text: "INPUT DEVICE"; color: Palette.textMuted; font-size: 10px; }
+                    ComboBox { model: input-device-names; current-index: selected-input; }
+                    Text { text: input-device-status; color: Palette.textMuted; font-size: 10px; }
+                    Text { text: "OUTPUT DEVICE"; color: Palette.textMuted; font-size: 10px; }
+                    ComboBox { model: output-device-names; current-index: selected-output; }
+                    Text { text: output-device-status; color: Palette.textMuted; font-size: 10px; }
+                    Rectangle { width: 100%; height: 1px; background: Palette.outline; }
+                    Text { text: "PAN  " + pan-text; color: Palette.text; font-size: 12px; }
+                    Slider { minimum: -1; maximum: 1; value: pan; }
+                    Button { text: muted ? "MUTE: ON" : "MUTE: OFF"; clicked => { root.mute-toggle(); } }
+                }
+            }
+            Rectangle {
+                background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+                VerticalBox {
+                    padding: 14px; spacing: 10px;
+                    Text { text: "02  PITCH CONTROL"; color: Palette.primary; font-size: 14px; font-weight: 700; }
+                    EffectSlot {
+                        name: "Pitch Correction"; present: pitch-present; enabled: pitch-enabled; wet-text: pitch-wet-text;
+                        param0-text: pitch-p0t; param1-text: pitch-p1t; param2-text: pitch-p2t; param3-text: pitch-p3t;
+                        param4-text: pitch-p4t; param5-text: pitch-p5t;
+                        toggle => { pitch-toggle(); }
+                    }
+                    Text { text: pitch-available ? "DETECTED  " + pitch-detected-text : "WAITING FOR PITCH INPUT"; color: Palette.text; font-size: 17px; font-weight: 700; }
+                    Text { text: "TARGET     " + pitch-target-text; color: Palette.textMuted; font-size: 12px; }
+                    Text { text: "CONFIDENCE " + pitch-confidence-text; color: Palette.textMuted; font-size: 12px; }
+                    Text { text: "SHIFT      " + pitch-shift-text; color: Palette.textMuted; font-size: 12px; }
+                    Rectangle { width: 100%; height: 1px; background: Palette.outline; }
+                    Text { text: "Live pitch data appears when Pitch Correction is active."; color: Palette.textMuted; font-size: 10px; }
+                }
+            }
+            Rectangle {
+                background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+                VerticalBox {
+                    padding: 14px; spacing: 8px;
+                    HorizontalBox {
+                        Text { text: "03  EFFECTS RACK"; color: Palette.text; font-size: 14px; font-weight: 700; }
+                        Text { text: chain-summary; color: Palette.textMuted; font-size: 10px; }
+                    }
+                    HorizontalBox { spacing: 7px;
+                        EffectSlot { name: "Noise Gate"; present: ng-present; enabled: ng-enabled; wet-text: ng-wet-text; param0-text: ng-p0t; param1-text: ng-p1t; param2-text: ng-p2t; param3-text: ng-p3t; param4-text: ng-p4t; toggle => { ng-toggle(); } }
+                        EffectSlot { name: "Equalizer"; present: eq-present; enabled: eq-enabled; wet-text: eq-wet-text; param0-text: eq-p0t; param1-text: eq-p1t; param2-text: eq-p2t; param3-text: eq-p3t; param4-text: eq-p4t; param5-text: eq-p5t; toggle => { eq-toggle(); } }
+                        EffectSlot { name: "Compressor"; present: comp-present; enabled: comp-enabled; wet-text: comp-wet-text; param0-text: comp-p0t; param1-text: comp-p1t; param2-text: comp-p2t; param3-text: comp-p3t; param4-text: comp-p4t; param5-text: comp-p5t; toggle => { comp-toggle(); } }
+                    }
+                    HorizontalBox { spacing: 7px;
+                        EffectSlot { name: "De-Esser"; present: deesser-present; enabled: deesser-enabled; wet-text: deesser-wet-text; param0-text: deesser-p0t; param1-text: deesser-p1t; param2-text: deesser-p2t; param3-text: deesser-p3t; param4-text: deesser-p4t; toggle => { deesser-toggle(); } }
+                        EffectSlot { name: "Saturation"; present: sat-present; enabled: sat-enabled; wet-text: sat-wet-text; param0-text: sat-p0t; param1-text: sat-p1t; param2-text: sat-p2t; toggle => { sat-toggle(); } }
+                        EffectSlot { name: "Limiter"; present: lim-present; enabled: lim-enabled; wet-text: lim-wet-text; param0-text: lim-p0t; param1-text: lim-p1t; param2-text: lim-p2t; toggle => { lim-toggle(); } }
+                    }
+                    HorizontalBox { spacing: 7px;
+                        EffectSlot { name: "Reverb"; present: rev-present; enabled: rev-enabled; wet-text: rev-wet-text; param0-text: rev-p0t; param1-text: rev-p1t; param2-text: rev-p2t; param3-text: rev-p3t; param4-text: rev-p4t; param5-text: rev-p5t; toggle => { rev-toggle(); } }
+                        EffectSlot { name: "Delay"; present: delay-present; enabled: delay-enabled; wet-text: delay-wet-text; param0-text: delay-p0t; param1-text: delay-p1t; param2-text: delay-p2t; param3-text: delay-p3t; toggle => { delay-toggle(); } }
+                        Rectangle { background: #111315; border-width: 1px; border-color: Palette.outline; border-radius: 8px; Text { text: "SIGNAL\nCHAIN"; color: Palette.textMuted; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; } }
+                    }
+                }
+            }
+        }
+      }
+    }
+
+    ScrollView {
+      visible: false;
+      VerticalBox {
+        spacing: 18px;
+        padding: 22px;
         Text {
             text: "AURALIS STUDIO — PITCHFORGE (Rust UI)";
             color: Palette.text;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
         }
         HorizontalBox {
@@ -546,7 +671,7 @@ export component App inherits Window {
             }
         }
         HorizontalBox {
-            spacing: 24px;
+            spacing: 16px;
             DevicesPanel {
                 input-names: input-device-names;
                 output-names: output-device-names;
@@ -576,7 +701,7 @@ export component App inherits Window {
                     Text {
                         text: "INPUT (dB)";
                         color: Palette.textMuted;
-                        font-size: 12px;
+                        font-size: 14px;
                     }
                     Slider {
                         minimum: -60;
@@ -586,11 +711,12 @@ export component App inherits Window {
                     Text {
                         text: input-gain-text;
                         color: Palette.text;
+                        font-size: 14px;
                     }
                     Text {
                         text: "OUTPUT (dB)";
                         color: Palette.textMuted;
-                        font-size: 12px;
+                        font-size: 14px;
                     }
                     Slider {
                         minimum: -60;
@@ -600,13 +726,14 @@ export component App inherits Window {
                     Text {
                         text: output-gain-text;
                         color: Palette.text;
+                        font-size: 14px;
                     }
                     HorizontalBox {
                         spacing: 12px;
                         Text {
                             text: "PAN (-1 .. +1)";
                             color: Palette.textMuted;
-                            font-size: 12px;
+                            font-size: 14px;
                         }
                         Slider {
                             minimum: -1;
@@ -616,6 +743,7 @@ export component App inherits Window {
                         Text {
                             text: pan-text;
                             color: Palette.text;
+                            font-size: 14px;
                         }
                         Button {
                             text: muted ? "Mute" : "Unmute";
@@ -628,12 +756,12 @@ export component App inherits Window {
                 Text {
                     text: "EFFECTS CHAIN";
                     color: Palette.textMuted;
-                    font-size: 13px;
+                    font-size: 15px;
                 }
                 Text {
                     text: chain-summary;
                     color: Palette.textMuted;
-                    font-size: 11px;
+                    font-size: 15px;
                 }
                 VerticalBox {
                     spacing: 8px;
@@ -748,7 +876,7 @@ export component App inherits Window {
                 Text {
                     text: "(no effects on the chain yet)";
                     color: Palette.textMuted;
-                    font-size: 11px;
+                    font-size: 15px;
                 }
             }
 
@@ -757,33 +885,34 @@ export component App inherits Window {
                 Text {
                     text: "PITCH";
                     color: Palette.textMuted;
-                    font-size: 13px;
+                    font-size: 15px;
                 }
                 if (!pitch-available) : Text {
                     text: "Not detected yet (add Pitch Correction to the chain)";
                     color: Palette.textMuted;
-                    font-size: 11px;
+                    font-size: 15px;
                 }
                 if (pitch-available) : VerticalBox {
                     Text {
                         text: pitch-detected-text;
                         color: Palette.text;
+                        font-size: 16px;
                         font-weight: 700;
                     }
                     Text {
                         text: "Target: " + pitch-target-text;
                         color: Palette.textMuted;
-                        font-size: 11px;
+                        font-size: 15px;
                     }
                     Text {
                         text: "Confidence: " + pitch-confidence-text;
                         color: Palette.textMuted;
-                        font-size: 11px;
+                        font-size: 15px;
                     }
                     Text {
                         text: "Shift: " + pitch-shift-text;
                         color: Palette.textMuted;
-                        font-size: 11px;
+                        font-size: 15px;
                     }
                 }
             }
@@ -792,7 +921,7 @@ export component App inherits Window {
         Text {
             text: "PRESETS";
             color: Palette.textMuted;
-            font-size: 13px;
+            font-size: 15px;
         }
         HorizontalBox {
             spacing: 8px;
@@ -815,7 +944,8 @@ export component App inherits Window {
         Text {
             text: presets-info;
             color: Palette.textMuted;
-            font-size: 11px;
+            font-size: 15px;
         }
+      }
     }
 }
