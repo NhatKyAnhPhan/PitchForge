@@ -194,9 +194,16 @@ struct AtomicSnapshot {
 class FixedSignalChain final : public SignalChain {
 public:
     FixedSignalChain()
-        : maintenanceThread_([this](std::stop_token stopToken) {
-            maintenanceLoop(stopToken);
+        : maintenanceThread_([this] {
+            maintenanceLoop();
         }) {}
+
+    ~FixedSignalChain() override {
+        maintenanceExit_.store(true, std::memory_order_release);
+        if (maintenanceThread_.joinable()) {
+            maintenanceThread_.join();
+        }
+    }
 
     void prepare(const audio::ProcessSpec& spec) override {
         configured_ = false;
@@ -610,8 +617,8 @@ private:
         }
     }
 
-    void maintenanceLoop(std::stop_token stopToken) noexcept {
-        while (!stopToken.stop_requested()) {
+    void maintenanceLoop() noexcept {
+        while (!maintenanceExit_.load(std::memory_order_acquire)) {
             reclaimRetiredProcessors();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -716,7 +723,8 @@ private:
     AtomicSnapshot snapshot_;
     std::array<ChainCommand, kCommandQueueCapacity> deferredCommands_{};
     std::size_t deferredCommandCount_ = 0;
-    std::jthread maintenanceThread_;
+    std::atomic<bool> maintenanceExit_{false};
+    std::thread maintenanceThread_;
 };
 
 } // namespace
