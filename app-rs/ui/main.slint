@@ -20,6 +20,9 @@ global Palette {
     in property <color> primary: #FFB000;
     in property <color> cyan: #00CFE8;
     in property <color> accent: #00D6A0;
+    in property <color> violet: #AA7BFF;
+    in property <color> coral: #FF795C;
+    in property <color> rose: #F15BB5;
     in property <color> destructive: #FF416B;
     in property <color> onAccent: #07100D;
 }
@@ -230,9 +233,9 @@ component EffectSlot {
 
     Rectangle {
       width: 100%; height: 76px;
-      background: Palette.surface;
+      background: enabled ? #1D2225 : Palette.surface;
       border-width: 1px;
-      border-color: Palette.outline;
+      border-color: enabled ? Palette.cyan : Palette.outline;
       border-radius: 8px;
       HorizontalBox {
         padding: 9px;
@@ -284,6 +287,12 @@ export component App inherits Window {
     in-out property <string> input-gain-text;
     in-out property <string> output-gain-text;
     in-out property <string> pan-text;
+    in-out property <float> bass-gain-db;
+    in-out property <float> treble-gain-db;
+    in-out property <float> reverb-mix;
+    in-out property <string> bass-gain-text;
+    in-out property <string> treble-gain-text;
+    in-out property <string> reverb-mix-text;
 
     // --- meters ---
     in-out property <float> in-peak-l;
@@ -500,6 +509,7 @@ export component App inherits Window {
 
     callback mute-toggle;
     callback refresh-devices;
+    callback tone-change(int, float);
     callback start-engine;
     callback save-preset;
     callback load-preset;
@@ -620,11 +630,41 @@ export component App inherits Window {
             }
         }
 
+        Rectangle {
+            width: 100%; height: 104px;
+            background: #15151A; border-width: 1px; border-color: #34303E; border-radius: 8px;
+            VerticalBox {
+                padding: 10px; spacing: 7px;
+                HorizontalBox {
+                    Text { text: "TONE STUDIO  /  EQ & SPACE"; color: Palette.violet; font-size: 12px; font-weight: 800; }
+                    Text { text: "CHỈNH ÂM SẮC & KHÔNG GIAN GIỌNG HÁT"; color: Palette.textMuted; font-size: 9px; }
+                }
+                HorizontalBox {
+                    spacing: 18px;
+                    VerticalBox {
+                        spacing: 3px;
+                        HorizontalBox { Text { text: "BASS"; color: Palette.coral; font-size: 11px; font-weight: 700; } Text { text: bass-gain-text; color: Palette.text; font-size: 10px; } }
+                        Slider { minimum: -12; maximum: 12; value: bass-gain-db; changed(value) => { root.tone-change(0, value); } }
+                    }
+                    VerticalBox {
+                        spacing: 3px;
+                        HorizontalBox { Text { text: "TREBLE"; color: Palette.cyan; font-size: 11px; font-weight: 700; } Text { text: treble-gain-text; color: Palette.text; font-size: 10px; } }
+                        Slider { minimum: -12; maximum: 12; value: treble-gain-db; changed(value) => { root.tone-change(1, value); } }
+                    }
+                    VerticalBox {
+                        spacing: 3px;
+                        HorizontalBox { Text { text: "ĐỘ VANG"; color: Palette.rose; font-size: 11px; font-weight: 700; } Text { text: reverb-mix-text; color: Palette.text; font-size: 10px; } }
+                        Slider { minimum: 0; maximum: 100; value: reverb-mix * 100; changed(value) => { root.tone-change(2, value); } }
+                    }
+                }
+            }
+        }
+
         // Main rack: routing, pitch correction and effect modules.
         HorizontalBox {
             width: 100%; spacing: 12px;
             Rectangle {
-                background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+                background: #151A18; border-width: 1px; border-color: #245044; border-radius: 8px;
                 VerticalBox {
                     padding: 14px; spacing: 9px;
                     Text { text: "1. ĐẦU VÀO & KHỬ ỒN STUDIO"; color: Palette.accent; font-size: 13px; font-weight: 700; }
@@ -642,7 +682,7 @@ export component App inherits Window {
                 }
             }
             Rectangle {
-                background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+                background: #14191B; border-width: 1px; border-color: #21505B; border-radius: 8px;
                 VerticalBox {
                     padding: 14px; spacing: 10px;
                     Text { text: "2. AUTO-TUNE UỐN GIỌNG"; color: Palette.cyan; font-size: 13px; font-weight: 700; }
@@ -661,7 +701,7 @@ export component App inherits Window {
                 }
             }
             Rectangle {
-                background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+                background: #19161C; border-width: 1px; border-color: #4A3458; border-radius: 8px;
                 VerticalBox {
                     padding: 14px; spacing: 8px;
                     HorizontalBox {

@@ -280,6 +280,12 @@ pub struct Model {
     pub output_gain_db: f32,
     pub pan: f32,
     pub muted: bool,
+    pub bass_gain_db: f32,
+    pub treble_gain_db: f32,
+    pub reverb_mix: f32,
+    pub bass_eq_instance: u32,
+    pub treble_eq_instance: u32,
+    pub tone_reverb_instance: u32,
     pub meters: Meters,
     pub chain: Vec<EffectModel>,
     pub pitch: PitchModel,
@@ -324,6 +330,12 @@ impl Model {
             output_gain_db: 0.0,
             pan: 0.0,
             muted: false,
+            bass_gain_db: 0.0,
+            treble_gain_db: 0.0,
+            reverb_mix: 0.0,
+            bass_eq_instance: 0,
+            treble_eq_instance: 0,
+            tone_reverb_instance: 0,
             meters: Meters::default(),
             chain: Vec::new(),
             pitch: PitchModel::default(),
@@ -547,6 +559,61 @@ impl Model {
             self.muted = muted;
         }
         status
+    }
+
+    pub fn set_tone_control(&mut self, control: i32, value: f32) -> i32 {
+        if !value.is_finite() {
+            return AURALIS_STATUS_INVALID_ARGUMENT;
+        }
+        match control {
+            0 | 1 => {
+                let gain_db = value.clamp(-12.0, 12.0);
+                let treble = control == 1;
+                let stored_id = if treble { self.treble_eq_instance } else { self.bass_eq_instance };
+                let instance_id = if stored_id != 0 {
+                    stored_id
+                } else {
+                    let id = NEXT_EFFECT_INSTANCE.fetch_add(1, Ordering::Relaxed);
+                    let Some(engine) = &self.engine else { return AURALIS_STATUS_NOT_READY };
+                    let status = engine.effect_add(AURALIS_EFFECT_EQUALIZER, id, self.chain.len() as u32);
+                    if status != AURALIS_STATUS_OK { return status; }
+                    if treble { self.treble_eq_instance = id; } else { self.bass_eq_instance = id; }
+                    id
+                };
+                let Some(engine) = &self.engine else { return AURALIS_STATUS_NOT_READY };
+                let frequency_hz: f32 = if treble { 6_000.0 } else { 120.0 };
+                let normalized_frequency = (frequency_hz / 20.0).ln() / 1_000.0_f32.ln();
+                for (parameter_id, normalized) in [
+                    (0, normalized_frequency),
+                    (1, (0.5 + gain_db / 36.0).clamp(0.0, 1.0)),
+                    (2, 0.22),
+                ] {
+                    let status = engine.effect_set_parameter(instance_id, parameter_id, normalized);
+                    if status != AURALIS_STATUS_OK { return status; }
+                }
+                if treble { self.treble_gain_db = gain_db; } else { self.bass_gain_db = gain_db; }
+                AURALIS_STATUS_OK
+            }
+            2 => {
+                let mix = (value / 100.0).clamp(0.0, 1.0);
+                let stored_id = self.tone_reverb_instance;
+                let instance_id = if stored_id != 0 {
+                    stored_id
+                } else {
+                    let id = NEXT_EFFECT_INSTANCE.fetch_add(1, Ordering::Relaxed);
+                    let Some(engine) = &self.engine else { return AURALIS_STATUS_NOT_READY };
+                    let status = engine.effect_add(AURALIS_EFFECT_REVERB, id, self.chain.len() as u32);
+                    if status != AURALIS_STATUS_OK { return status; }
+                    self.tone_reverb_instance = id;
+                    id
+                };
+                let Some(engine) = &self.engine else { return AURALIS_STATUS_NOT_READY };
+                let status = engine.effect_set_wet(instance_id, mix);
+                if status == AURALIS_STATUS_OK { self.reverb_mix = mix; }
+                status
+            }
+            _ => AURALIS_STATUS_INVALID_ARGUMENT,
+        }
     }
 
     pub fn effect_set_wet(&mut self, instance_id: u32, wet: f32) -> i32 {
@@ -809,6 +876,9 @@ impl Model {
                 }
             }
         }
+        self.bass_eq_instance = 0;
+        self.treble_eq_instance = 0;
+        self.tone_reverb_instance = 0;
         Ok(())
     }
 }

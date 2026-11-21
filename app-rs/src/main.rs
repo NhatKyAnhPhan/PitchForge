@@ -64,6 +64,21 @@ fn main() -> Result<(), slint::PlatformError> {
     }
     {
         let model = model.clone();
+        let app_weak = app_weak.clone();
+        app.on_tone_change(move |control, value| {
+            let Some(app) = app_weak.upgrade() else { return };
+            let mut model = model.lock().unwrap();
+            let status = model.set_tone_control(control, value);
+            if status != ffi::AURALIS_STATUS_OK {
+                model.engine_error = status_name(status).to_string();
+            } else {
+                model.engine_error.clear();
+            }
+            push_state(&app, &model);
+        });
+    }
+    {
+        let model = model.clone();
         app.on_start_engine(move || {
             let mut model = model.lock().unwrap();
             model.start_engine();
@@ -303,6 +318,12 @@ fn push_state_inner(app: &App, model: &Model) {
     app.set_input_gain_text(ss(db_text(model.input_gain_db)));
     app.set_output_gain_text(ss(db_text(model.output_gain_db)));
     app.set_pan_text(ss(format!("{:+.2}", model.pan)));
+    app.set_bass_gain_db(model.bass_gain_db);
+    app.set_treble_gain_db(model.treble_gain_db);
+    app.set_reverb_mix(model.reverb_mix);
+    app.set_bass_gain_text(ss(format!("{:+.1} dB", model.bass_gain_db)));
+    app.set_treble_gain_text(ss(format!("{:+.1} dB", model.treble_gain_db)));
+    app.set_reverb_mix_text(ss(format!("{:.0}%", model.reverb_mix * 100.0)));
 
     app.set_in_peak_l(model.meters.input_peak_left);
     app.set_in_peak_r(model.meters.input_peak_right);
