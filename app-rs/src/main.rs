@@ -53,6 +53,17 @@ fn main() -> Result<(), slint::PlatformError> {
     }
     {
         let model = model.clone();
+        let app_weak = app_weak.clone();
+        app.on_refresh_devices(move || {
+            let Some(app) = app_weak.upgrade() else { return };
+            let mut model = model.lock().unwrap();
+            model.refresh_devices();
+            model.select_devices();
+            push_state(&app, &model);
+        });
+    }
+    {
+        let model = model.clone();
         app.on_start_engine(move || {
             let mut model = model.lock().unwrap();
             model.start_engine();

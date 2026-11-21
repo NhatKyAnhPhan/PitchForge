@@ -12,13 +12,14 @@ import {
 } from "std-widgets.slint";
 
 global Palette {
-    in property <color> background: #0B0C0E;
-    in property <color> surface: #17191C;
-    in property <color> outline: #2B2E32;
-    in property <color> text: #F3F5F7;
-    in property <color> textMuted: #A6AFBA;
-    in property <color> primary: #08C9E8;
-    in property <color> accent: #00D69A;
+    in property <color> background: #090909;
+    in property <color> surface: #171717;
+    in property <color> outline: #292929;
+    in property <color> text: #F4F4F4;
+    in property <color> textMuted: #9B9B9B;
+    in property <color> primary: #FFB000;
+    in property <color> cyan: #00CFE8;
+    in property <color> accent: #00D6A0;
     in property <color> destructive: #FF416B;
     in property <color> onAccent: #07100D;
 }
@@ -67,7 +68,7 @@ component MeterBar {
         Rectangle {
             width: 8px;
             height: 110px * max(0.0, min(1.0, rms));
-            background: Palette.primary;
+            background: Palette.cyan;
             border-radius: 2px;
             y: 16px;
         }
@@ -86,7 +87,7 @@ component WaveformView {
             width: max(1px, parent.width / samples.length - 1px);
             height: max(2px, min(1.0, abs(sample)) * (parent.height - 10px));
             y: (parent.height - self.height) / 2;
-            background: Palette.primary;
+            background: Palette.cyan;
             border-radius: 1px;
         }
     }
@@ -255,8 +256,8 @@ component EffectSlot {
 
 export component App inherits Window {
     title: "PitchForge — Voice Studio";
-    preferred-width: 1440px;
-    preferred-height: 940px;
+    preferred-width: 1360px;
+    preferred-height: 820px;
     min-width: 900px;
     min-height: 640px;
     background: Palette.background;
@@ -498,6 +499,7 @@ export component App inherits Window {
     in-out property <bool> test-tone-supported;
 
     callback mute-toggle;
+    callback refresh-devices;
     callback start-engine;
     callback save-preset;
     callback load-preset;
@@ -517,34 +519,36 @@ export component App inherits Window {
       height: 100%;
       VerticalBox {
         width: 100%;
-        spacing: 12px;
-        padding: 16px;
+        spacing: 10px;
+        padding: 12px;
 
         // Top bar: brand, engine status and primary action.
         Rectangle {
             width: 100%; height: 58px;
-            background: #151719; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
+            background: #151515; border-width: 1px; border-color: Palette.outline; border-radius: 7px;
             HorizontalBox {
-                padding: 12px; spacing: 14px;
-                Text { text: "PITCHFORGE"; color: Palette.text; font-size: 21px; font-weight: 800; vertical-alignment: center; }
-                Text { text: "VOICE STUDIO  /  REAL-TIME PROCESSING"; color: Palette.textMuted; font-size: 11px; vertical-alignment: center; }
+                padding: 10px; spacing: 10px;
+                Text { text: "◉  SoundCard Studio  PRO"; color: Palette.text; font-size: 17px; font-weight: 800; vertical-alignment: center; }
+                Text { text: "BỘ XỬ LÝ GIỌNG HÁT · AUTO-TUNE & SOUNDCARD LIVESTREAM"; color: Palette.textMuted; font-size: 9px; vertical-alignment: center; }
+                ComboBox { model: input-device-names; current-index: selected-input; }
                 StatusBadge {
-                    status-text: engine-started ? "● ENGINE ONLINE" : (engine-warning != "" ? "● DEMO MODE" : "● ENGINE READY");
+                    status-text: engine-started ? "● MIC MỞ" : (engine-warning != "" ? "● LỖI ENGINE" : "● SẴN SÀNG");
                     badge-color: engine-error != "" ? Palette.destructive : Palette.accent;
                 }
-                Button { text: test-tone ? "■ STOP TEST TONE" : "▶ PLAY TEST SOUND"; enabled: test-tone-supported; clicked => { root.test-tone-toggle(); } }
+                Button { text: test-tone ? "DỪNG THỬ ÂM" : "THỬ MẪU GIỌNG"; enabled: test-tone-supported; clicked => { root.test-tone-toggle(); } }
                 Button { text: start-button-text; enabled: engine-warning == ""; clicked => { root.start-engine(); } }
+                Button { text: muted ? "KIỂM ÂM: TẮT" : "KIỂM ÂM: BẬT"; clicked => { root.mute-toggle(); } }
             }
         }
 
         Rectangle {
-            width: 100%; height: 116px;
+            width: 100%; height: 112px;
             background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
             VerticalBox {
                 padding: 10px; spacing: 5px;
                 HorizontalBox {
-                    Text { text: "AUDIO WAVEFORM"; color: Palette.text; font-size: 11px; font-weight: 700; }
-                    Text { text: !waveform-supported ? "UPDATE AUDIO ENGINE DLL TO ENABLE LIVE WAVEFORM" : (test-tone ? "440 Hz MONITOR TONE" : "LIVE · 128 SAMPLES"); color: test-tone ? Palette.accent : Palette.textMuted; font-size: 10px; }
+                    Text { text: "PHỔ TẦN ÂM THANH"; color: Palette.text; font-size: 11px; font-weight: 700; }
+                    Text { text: !waveform-supported ? "CẬP NHẬT AUDIO ENGINE ĐỂ HIỂN THỊ DẠNG SÓNG" : (test-tone ? "440 Hz · ÂM KIỂM TRA" : "48 kHz · 24-BIT · TRỰC TIẾP"); color: test-tone ? Palette.accent : Palette.textMuted; font-size: 10px; }
                 }
                 WaveformView { samples: waveform; }
             }
@@ -557,8 +561,8 @@ export component App inherits Window {
             VerticalBox {
                 padding: 14px; spacing: 10px;
                 HorizontalBox {
-                    Text { text: "LIVE AUDIO  /  INPUT → OUTPUT"; color: Palette.text; font-size: 14px; font-weight: 700; }
-                    Text { text: latency-text + "    " + (clipping ? "CLIPPING" : "SIGNAL OK"); color: clipping ? Palette.destructive : Palette.accent; font-size: 11px; }
+                    Text { text: "GIÁM SÁT TÍN HIỆU  /  INPUT → OUTPUT"; color: Palette.text; font-size: 12px; font-weight: 700; }
+                    Text { text: latency-text + "    " + (clipping ? "ĐANG CLIP" : "TÍN HIỆU ỔN"); color: clipping ? Palette.destructive : Palette.accent; font-size: 10px; }
                 }
                 HorizontalBox {
                     spacing: 28px;
@@ -607,7 +611,7 @@ export component App inherits Window {
             background: #151719; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
             HorizontalBox {
                 padding: 9px; spacing: 8px;
-                Text { text: "PRESET"; color: Palette.accent; font-size: 11px; vertical-alignment: center; }
+                Text { text: "PRESET NHANH"; color: Palette.primary; font-size: 10px; vertical-alignment: center; }
                 ComboBox { model: preset-names; current-index: selected-preset; }
                 LineEdit { text: preset-name; }
                 Button { text: "SAVE"; clicked => { root.save-preset(); } }
@@ -623,15 +627,16 @@ export component App inherits Window {
                 background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
                 VerticalBox {
                     padding: 14px; spacing: 9px;
-                    Text { text: "01  AUDIO ROUTING"; color: Palette.accent; font-size: 14px; font-weight: 700; }
-                    Text { text: "INPUT DEVICE"; color: Palette.textMuted; font-size: 10px; }
-                    ComboBox { model: input-device-names; current-index: selected-input; }
-                    Text { text: input-device-status; color: Palette.textMuted; font-size: 10px; }
-                    Text { text: "OUTPUT DEVICE"; color: Palette.textMuted; font-size: 10px; }
+                    Text { text: "1. ĐẦU VÀO & KHỬ ỒN STUDIO"; color: Palette.accent; font-size: 13px; font-weight: 700; }
+                    Text { text: "MICRO  ·  " + input-device-status; color: Palette.textMuted; font-size: 10px; }
+                    Button { text: "↻ TẢI LẠI THIẾT BỊ"; clicked => { root.refresh-devices(); } }
+                    Text { text: "ĐỘ NHẠY MICRO  " + input-gain-text; color: Palette.text; font-size: 11px; }
+                    Slider { minimum: -60; maximum: 24; value: input-gain-db; }
+                    Text { text: "THIẾT BỊ ĐẦU RA"; color: Palette.textMuted; font-size: 10px; }
                     ComboBox { model: output-device-names; current-index: selected-output; }
                     Text { text: output-device-status; color: Palette.textMuted; font-size: 10px; }
                     Rectangle { width: 100%; height: 1px; background: Palette.outline; }
-                    Text { text: "PAN  " + pan-text; color: Palette.text; font-size: 12px; }
+                    Text { text: "CÂN BẰNG  " + pan-text; color: Palette.text; font-size: 12px; }
                     Slider { minimum: -1; maximum: 1; value: pan; }
                     Button { text: muted ? "MUTE: ON" : "MUTE: OFF"; clicked => { root.mute-toggle(); } }
                 }
@@ -640,7 +645,7 @@ export component App inherits Window {
                 background: Palette.surface; border-width: 1px; border-color: Palette.outline; border-radius: 8px;
                 VerticalBox {
                     padding: 14px; spacing: 10px;
-                    Text { text: "02  AUTO TUNE"; color: Palette.primary; font-size: 14px; font-weight: 700; }
+                    Text { text: "2. AUTO-TUNE UỐN GIỌNG"; color: Palette.cyan; font-size: 13px; font-weight: 700; }
                     EffectSlot {
                         name: "AUTO TUNE"; present: pitch-present; enabled: pitch-enabled; wet-text: pitch-wet-text;
                         param0-text: pitch-p0t; param1-text: pitch-p1t; param2-text: pitch-p2t; param3-text: pitch-p3t;
@@ -660,7 +665,7 @@ export component App inherits Window {
                 VerticalBox {
                     padding: 14px; spacing: 8px;
                     HorizontalBox {
-                        Text { text: "03  EFFECTS RACK"; color: Palette.text; font-size: 14px; font-weight: 700; }
+                        Text { text: "3. HIỆU ỨNG GIỌNG HÁT"; color: Palette.text; font-size: 13px; font-weight: 700; }
                         Text { text: chain-summary; color: Palette.textMuted; font-size: 10px; }
                     }
                     HorizontalBox { spacing: 7px;
